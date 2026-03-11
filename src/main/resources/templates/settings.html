@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: html}" th:with="view='settings',activePage='settings',pageTitle='Settings'">
+<body>
+<div th:fragment="content">
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">Default Metadata</h5></div>
+                <div class="card-body">
+                    <form method="post" th:action="@{/settings}">
+
+                        <div class="mb-3">
+                            <label for="defaultDescription" class="form-label">Default description</label>
+                            <textarea class="form-control" id="defaultDescription" name="defaultDescription"
+                                      rows="3" th:text="${defaultDescription}"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="defaultTags" class="form-label">Default tags (comma-separated)</label>
+                            <input type="text" class="form-control" id="defaultTags" name="defaultTags"
+                                   th:value="${defaultTags}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="defaultPrivacy" class="form-label">Default privacy</label>
+                            <select class="form-select" id="defaultPrivacy" name="defaultPrivacy">
+                                <option value="PRIVATE" th:selected="${defaultPrivacy == 'PRIVATE'}">Private</option>
+                                <option value="UNLISTED" th:selected="${defaultPrivacy == 'UNLISTED'}">Unlisted</option>
+                                <option value="PUBLIC" th:selected="${defaultPrivacy == 'PUBLIC'}">Public</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="defaultCategory" class="form-label">Default YouTube category ID</label>
+                            <input type="text" class="form-control" id="defaultCategory" name="defaultCategory"
+                                   th:value="${defaultCategory}" placeholder="e.g. 22 (People & Blogs)">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

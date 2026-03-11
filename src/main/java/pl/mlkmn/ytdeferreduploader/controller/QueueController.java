@@ -19,7 +19,12 @@ public class QueueController {
         this.uploadJobRepository = uploadJobRepository;
     }
 
-    @GetMapping({"/", "/queue"})
+    @GetMapping("/")
+    public String root() {
+        return "redirect:/upload";
+    }
+
+    @GetMapping("/queue")
     public String showQueue(Model model) {
         model.addAttribute("jobs", uploadJobRepository.findAllByOrderByCreatedAtDesc());
         return "queue";
