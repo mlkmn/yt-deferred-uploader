@@ -1,0 +1,24 @@
+### Gradle ###
+.gradle/
+build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+### VS Code ###
+.vscode/
+
+### Application data ###
+uploads/
+data/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Gradle Wrapper ###
+!gradle/wrapper/gradle-wrapper.jar

@@ -1,0 +1,25 @@
+app:
+  upload-dir: ./uploads
+  max-file-size-mb: 500
+  youtube:
+    daily-quota-limit: 10000
+    upload-cost-units: 1600
+    quota-reset-timezone: Europe/Warsaw
+  scheduler:
+    poll-interval-ms: 300000
+    max-retries: 3
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  datasource:
+    url: jdbc:h2:file:./data/ytdeferreduploader
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: true
