@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: html}" th:with="view='queue',activePage='queue',pageTitle='Queue'">
+<body>
+<div th:fragment="content">
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Upload Queue</h4>
+        <a th:href="@{/upload}" class="btn btn-primary btn-sm">New Upload</a>
+    </div>
+
+    <div th:if="${#lists.isEmpty(jobs)}" class="text-muted text-center py-5">
+        No jobs yet. <a th:href="@{/upload}">Upload a video</a> to get started.
+    </div>
+
+    <div class="table-responsive" th:unless="${#lists.isEmpty(jobs)}">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Size</th>
+                    <th>Privacy</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="job : ${jobs}">
+                    <td th:text="${job.id}"></td>
+                    <td th:text="${job.title}"></td>
+                    <td th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '—'}"></td>
+                    <td><span class="badge text-bg-secondary" th:text="${job.privacyStatus}"></span></td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${job.status.name() == 'PENDING' ? 'text-bg-warning' :
+                                               job.status.name() == 'UPLOADING' ? 'text-bg-info' :
+                                               job.status.name() == 'COMPLETED' ? 'text-bg-success' :
+                                               job.status.name() == 'FAILED' ? 'text-bg-danger' :
+                                               'text-bg-dark'}"
+                              th:text="${job.status}"></span>
+                        <small th:if="${job.errorMessage}" class="d-block text-danger mt-1"
+                               th:text="${job.errorMessage}"></small>
+                    </td>
+                    <td th:text="${job.createdAt != null ? job.createdAt.toString().substring(0,16).replace('T',' ') : '—'}"></td>
+                    <td>
+                        <form th:if="${job.status.name() == 'PENDING'}"
+                              th:action="@{/queue/{id}/cancel(id=${job.id})}" method="post"
+                              style="display:inline">
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                    onclick="return confirm('Cancel this job?')">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
