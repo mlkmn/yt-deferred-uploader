@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: html}" th:with="view='upload',activePage='upload',pageTitle='Upload'">
+<body>
+<div th:fragment="content">
+
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">Upload Video</h5></div>
+                <div class="card-body">
+                    <form id="uploadForm" method="post" th:action="@{/upload}" enctype="multipart/form-data">
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Video file</label>
+                            <input type="file" class="form-control" id="file" name="file"
+                                   accept="video/*" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title" name="title"
+                                   maxlength="100" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description"
+                                      rows="3"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">Tags (comma-separated)</label>
+                            <input type="text" class="form-control" id="tags" name="tags"
+                                   maxlength="500">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="privacyStatus" class="form-label">Privacy</label>
+                            <select class="form-select" id="privacyStatus" name="privacyStatus">
+                                <option value="PRIVATE">Private</option>
+                                <option value="UNLISTED">Unlisted</option>
+                                <option value="PUBLIC">Public</option>
+                            </select>
+                        </div>
+
+                        <div class="progress mb-3 d-none" id="progressContainer">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 id="progressBar" role="progressbar" style="width: 0%">0%</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Upload</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            const formData = new FormData(form);
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const submitBtn = document.getElementById('submitBtn');
+
+            progressContainer.classList.remove('d-none');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading…';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    progressBar.textContent = pct + '%';
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                // Follow redirect — server sends 302 to /queue or /upload
+                window.location.href = xhr.responseURL;
+            });
+
+            xhr.addEventListener('error', function() {
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                progressBar.textContent = 'Upload failed';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload';
+            });
+
+            xhr.send(formData);
+        });
+    </script>
+
+</div>
+</body>
+</html>
