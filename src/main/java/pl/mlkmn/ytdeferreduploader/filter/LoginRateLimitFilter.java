@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -18,8 +19,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
     private final ConcurrentHashMap<String, AttemptRecord> attempts = new ConcurrentHashMap<>();
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
         if ("POST".equalsIgnoreCase(request.getMethod()) && "/login".equals(request.getServletPath())) {
             String ip = getClientIp(request);
             AttemptRecord record = attempts.get(ip);
