@@ -2,6 +2,9 @@ app:
   upload-dir: ./uploads
   max-file-size-mb: 500
   youtube:
+    client-id: ${YOUTUBE_CLIENT_ID:}
+    client-secret: ${YOUTUBE_CLIENT_SECRET:}
+    redirect-uri: http://localhost:8080/settings/oauth/callback
     daily-quota-limit: 10000
     upload-cost-units: 1600
     quota-reset-timezone: Europe/Warsaw

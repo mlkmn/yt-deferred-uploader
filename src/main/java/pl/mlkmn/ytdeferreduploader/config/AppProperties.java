@@ -45,9 +45,36 @@ public class AppProperties {
     }
 
     public static class YouTube {
+        private String clientId = "";
+        private String clientSecret = "";
+        private String redirectUri = "http://localhost:8080/settings/oauth/callback";
         private int dailyQuotaLimit = 10000;
         private int uploadCostUnits = 1600;
         private String quotaResetTimezone = "Europe/Warsaw";
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+
+        public String getClientSecret() {
+            return clientSecret;
+        }
+
+        public void setClientSecret(String clientSecret) {
+            this.clientSecret = clientSecret;
+        }
+
+        public String getRedirectUri() {
+            return redirectUri;
+        }
+
+        public void setRedirectUri(String redirectUri) {
+            this.redirectUri = redirectUri;
+        }
 
         public int getDailyQuotaLimit() {
             return dailyQuotaLimit;

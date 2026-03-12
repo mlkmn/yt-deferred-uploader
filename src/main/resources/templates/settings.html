@@ -10,6 +10,24 @@
 
     <div class="row justify-content-center">
         <div class="col-lg-8">
+
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">YouTube Account</h5></div>
+                <div class="card-body">
+                    <div th:if="${youtubeConnected}">
+                        <p class="text-success mb-2">YouTube account is connected.</p>
+                        <form method="post" th:action="@{/settings/oauth/disconnect}" style="display:inline">
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                    onclick="return confirm('Disconnect YouTube account?')">Disconnect</button>
+                        </form>
+                    </div>
+                    <div th:unless="${youtubeConnected}">
+                        <p class="text-muted mb-2">No YouTube account linked.</p>
+                        <a th:href="@{/settings/oauth/connect}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header"><h5 class="mb-0">Default Metadata</h5></div>
                 <div class="card-body">

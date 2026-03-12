@@ -13,6 +13,8 @@ public class SettingsService {
     public static final String KEY_DEFAULT_TAGS = "default_tags";
     public static final String KEY_DEFAULT_PRIVACY = "default_privacy";
     public static final String KEY_DEFAULT_CATEGORY = "default_category";
+    public static final String KEY_OAUTH_ACCESS_TOKEN = "oauth_access_token";
+    public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
 
     private final AppSettingRepository appSettingRepository;
 
@@ -33,5 +35,9 @@ public class SettingsService {
                 .orElse(new AppSetting(key, null));
         setting.setSettingValue(value);
         appSettingRepository.save(setting);
+    }
+
+    public void delete(String key) {
+        appSettingRepository.deleteById(key);
     }
 }
