@@ -1,14 +1,20 @@
 package pl.mlkmn.ytdeferreduploader.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 
 @Controller
 public class QueueController {
@@ -26,7 +32,7 @@ public class QueueController {
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = uploadJobRepository.findAllByOrderBySortOrderAscCreatedAtDesc();
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
@@ -35,7 +41,7 @@ public class QueueController {
 
     @GetMapping("/queue/table")
     public String queueTableFragment(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = uploadJobRepository.findAllByOrderBySortOrderAscCreatedAtDesc();
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
@@ -57,5 +63,50 @@ public class QueueController {
                     "Job #" + id + " cancelled");
         }
         return "redirect:/queue";
+    }
+
+    @PostMapping("/queue/{id}/retry")
+    public String retryJob(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        UploadJob job = uploadJobRepository.findById(id).orElse(null);
+        if (job == null) {
+            redirectAttributes.addFlashAttribute("error", "Job not found");
+        } else if (!Set.of(UploadStatus.FAILED, UploadStatus.CANCELLED).contains(job.getStatus())) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Only FAILED or CANCELLED jobs can be retried (current: " + job.getStatus() + ")");
+        } else {
+            job.setStatus(UploadStatus.PENDING);
+            job.setRetryCount(0);
+            job.setErrorMessage(null);
+            job.setScheduledAt(Instant.now());
+            uploadJobRepository.save(job);
+            redirectAttributes.addFlashAttribute("success", "Job #" + id + " queued for retry");
+        }
+        return "redirect:/queue";
+    }
+
+    @PostMapping("/queue/{id}/delete")
+    public String deleteJob(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        UploadJob job = uploadJobRepository.findById(id).orElse(null);
+        if (job == null) {
+            redirectAttributes.addFlashAttribute("error", "Job not found");
+        } else if (job.getStatus() == UploadStatus.UPLOADING) {
+            redirectAttributes.addFlashAttribute("error", "Cannot delete a job that is currently uploading");
+        } else {
+            uploadJobRepository.delete(job);
+            redirectAttributes.addFlashAttribute("success", "Job #" + id + " deleted");
+        }
+        return "redirect:/queue";
+    }
+
+    @PostMapping("/queue/reorder")
+    public ResponseEntity<Void> reorderQueue(@RequestBody List<Long> jobIds) {
+        for (int i = 0; i < jobIds.size(); i++) {
+            final int order = i;
+            uploadJobRepository.findById(jobIds.get(i)).ifPresent(job -> {
+                job.setSortOrder(order);
+                uploadJobRepository.save(job);
+            });
+        }
+        return ResponseEntity.ok().build();
     }
 }

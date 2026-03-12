@@ -17,6 +17,8 @@
         <a th:href="@{/upload}" class="btn btn-primary btn-sm">New Upload</a>
     </div>
 
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
     <div th:fragment="jobTable" id="job-table"
          th:hx-get="${hasActiveJobs} ? @{/queue/table} : ''"
          th:hx-trigger="${hasActiveJobs} ? 'every 5s' : 'none'"
@@ -27,9 +29,13 @@
         </div>
 
         <div class="table-responsive" th:unless="${#lists.isEmpty(jobs)}">
+            <span th:each="job : ${jobs}"
+                  class="d-none job-status-data"
+                  th:attr="data-job-id=${job.id},data-status=${job.status.name()},data-title=${job.title}"></span>
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th style="width:2rem"></th>
                         <th>#</th>
                         <th>Title</th>
                         <th>Size</th>
@@ -40,7 +46,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="job : ${jobs}">
+                    <tr th:each="job : ${jobs}" th:attr="data-id=${job.id}">
+                        <td class="drag-handle" style="cursor:grab">&#x2630;</td>
                         <td th:text="${job.id}"></td>
                         <td th:text="${job.title}"></td>
                         <td th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '—'}"></td>
@@ -64,15 +71,94 @@
                                 <button type="submit" class="btn btn-outline-danger btn-sm"
                                         onclick="return confirm('Cancel this job?')">Cancel</button>
                             </form>
+                            <form th:if="${job.status.name() == 'FAILED' or job.status.name() == 'CANCELLED'}"
+                                  th:action="@{/queue/{id}/retry(id=${job.id})}" method="post"
+                                  style="display:inline">
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Retry</button>
+                            </form>
                             <a th:if="${job.status.name() == 'COMPLETED' and job.youtubeId != null}"
                                th:href="'https://youtu.be/' + ${job.youtubeId}"
                                target="_blank" class="btn btn-outline-success btn-sm">View</a>
+                            <form th:if="${job.status.name() != 'UPLOADING'}"
+                                  th:action="@{/queue/{id}/delete(id=${job.id})}" method="post"
+                                  style="display:inline">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                        onclick="return confirm('Delete this job?')">Delete</button>
+                            </form>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+        window.jobStatuses = window.jobStatuses || {};
+
+        function captureStatuses() {
+            const statuses = {};
+            document.querySelectorAll('.job-status-data').forEach(el => {
+                statuses[el.dataset.jobId] = { status: el.dataset.status, title: el.dataset.title };
+            });
+            return statuses;
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const bgClass = type === 'success' ? 'text-bg-success' : 'text-bg-danger';
+            const html = `<div class="toast ${bgClass}" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            data-bs-dismiss="toast"></button>
+                </div>
+            </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            const toastEl = container.lastElementChild;
+            new bootstrap.Toast(toastEl, { delay: 5000 }).show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        }
+
+        function initSortable() {
+            const tbody = document.querySelector('#job-table tbody');
+            if (!tbody) return;
+            Sortable.create(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function() {
+                    const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
+                            .map(row => parseInt(row.dataset.id));
+                    fetch('/queue/reorder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(ids)
+                    });
+                }
+            });
+        }
+
+        // Capture initial statuses
+        window.jobStatuses = captureStatuses();
+        initSortable();
+
+        // After each HTMX swap, detect changes and show toasts, re-init sortable
+        document.body.addEventListener('htmx:afterSwap', function(e) {
+            if (e.detail.target.id !== 'job-table') return;
+            const newStatuses = captureStatuses();
+            for (const [id, data] of Object.entries(newStatuses)) {
+                const old = window.jobStatuses[id];
+                if (old && old.status !== data.status) {
+                    if (data.status === 'COMPLETED') {
+                        showToast(`"${data.title}" uploaded successfully!`, 'success');
+                    } else if (data.status === 'FAILED') {
+                        showToast(`"${data.title}" upload failed.`, 'error');
+                    }
+                }
+            }
+            window.jobStatuses = newStatuses;
+            initSortable();
+        });
+    </script>
 
 </div>
 </body>

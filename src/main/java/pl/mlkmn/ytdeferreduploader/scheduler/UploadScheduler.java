@@ -9,9 +9,11 @@ import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
+import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeUploadService;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -54,7 +56,7 @@ public class UploadScheduler {
             return;
         }
 
-        var nextJob = jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
+        var nextJob = jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
                 UploadStatus.PENDING, Instant.now());
 
         if (nextJob.isEmpty()) {
@@ -77,25 +79,36 @@ public class UploadScheduler {
             job.setUploadedAt(Instant.now());
             quotaTracker.recordUpload();
             log.info("Job {} uploaded successfully. YouTube ID: {}", job.getId(), youtubeId);
-        } catch (Exception e) {
-            log.error("Upload failed for job {}", job.getId(), e);
+        } catch (UploadException e) {
+            log.error("Upload failed for job {} (permanent={})", job.getId(), e.isPermanent(), e);
             job.setErrorMessage(e.getMessage());
-            int maxRetries = appProperties.getScheduler().getMaxRetries();
-            if (job.getRetryCount() < maxRetries) {
-                job.setRetryCount(job.getRetryCount() + 1);
-                job.setStatus(UploadStatus.PENDING);
-                log.info("Job {} will be retried ({}/{})", job.getId(), job.getRetryCount(), maxRetries);
-            } else {
+            if (e.isPermanent()) {
                 job.setStatus(UploadStatus.FAILED);
-                log.warn("Job {} permanently failed after {} retries", job.getId(), maxRetries);
+                log.warn("Job {} permanently failed: {}", job.getId(), e.getMessage());
+            } else {
+                int maxRetries = appProperties.getScheduler().getMaxRetries();
+                if (job.getRetryCount() < maxRetries) {
+                    job.setRetryCount(job.getRetryCount() + 1);
+                    job.setStatus(UploadStatus.PENDING);
+                    job.setScheduledAt(Instant.now().plus(backoffDelay(job.getRetryCount())));
+                    log.info("Job {} will be retried ({}/{}) after {} delay",
+                            job.getId(), job.getRetryCount(), maxRetries, backoffDelay(job.getRetryCount()));
+                } else {
+                    job.setStatus(UploadStatus.FAILED);
+                    log.warn("Job {} permanently failed after {} retries", job.getId(), maxRetries);
+                }
             }
+        } catch (Exception e) {
+            log.error("Unexpected error for job {}", job.getId(), e);
+            job.setErrorMessage(e.getMessage());
+            job.setStatus(UploadStatus.FAILED);
         }
 
         jobRepository.save(job);
     }
 
     private void deferPendingJobs() {
-        var pendingJobs = jobRepository.findByStatusOrderByCreatedAtAsc(UploadStatus.PENDING);
+        var pendingJobs = jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING);
         if (pendingJobs.isEmpty()) {
             return;
         }
@@ -106,6 +119,12 @@ public class UploadScheduler {
             jobRepository.save(job);
         }
         log.info("Deferred {} pending jobs to next quota reset at {}", pendingJobs.size(), nextReset);
+    }
+
+    private Duration backoffDelay(int retryCount) {
+        // Exponential backoff: 1min, 4min, 9min, ...
+        long minutes = (long) retryCount * retryCount;
+        return Duration.ofMinutes(Math.max(1, minutes));
     }
 
     private Instant nextQuotaReset() {

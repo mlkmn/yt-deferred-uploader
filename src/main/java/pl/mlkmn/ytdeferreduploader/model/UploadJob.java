@@ -51,6 +51,9 @@ public class UploadJob {
     @Column(name = "retry_count")
     private int retryCount = 0;
 
+    @Column(name = "sort_order")
+    private int sortOrder = 0;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
@@ -170,6 +173,14 @@ public class UploadJob {
 
     public void setRetryCount(int retryCount) {
         this.retryCount = retryCount;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public Instant getCreatedAt() {

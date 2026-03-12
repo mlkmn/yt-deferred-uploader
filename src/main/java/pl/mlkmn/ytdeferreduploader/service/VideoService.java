@@ -23,6 +23,10 @@ public class VideoService {
             "video/x-matroska", "video/webm", "video/x-flv"
     );
 
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"
+    );
+
     private final UploadJobRepository uploadJobRepository;
     private final AppProperties appProperties;
 
@@ -79,6 +83,15 @@ public class VideoService {
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new IllegalArgumentException(
                     "Unsupported file type: " + contentType + ". Allowed: " + ALLOWED_CONTENT_TYPES);
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename != null) {
+            String ext = filename.contains(".") ? filename.substring(filename.lastIndexOf('.')).toLowerCase() : "";
+            if (!ALLOWED_EXTENSIONS.contains(ext)) {
+                throw new IllegalArgumentException(
+                        "Unsupported file extension: " + ext + ". Allowed: " + ALLOWED_EXTENSIONS);
+            }
         }
     }
 }

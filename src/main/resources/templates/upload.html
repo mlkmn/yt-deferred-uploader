@@ -22,7 +22,11 @@
                         <div class="mb-3">
                             <label for="file" class="form-label">Video file</label>
                             <input type="file" class="form-control" id="file" name="file"
-                                   accept="video/*" required>
+                                   accept=".mp4,.mov,.avi,.mkv,.webm,.flv" required>
+                            <div class="form-text">
+                                Allowed: MP4, MOV, AVI, MKV, WebM, FLV.
+                                Max size: <span th:text="${@appProperties.maxFileSizeMb}"></span> MB.
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -68,6 +72,24 @@
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const form = this;
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+
+            if (!file) { alert('Please select a file.'); return; }
+
+            const allowedExts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv'];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!allowedExts.includes(ext)) {
+                alert('Unsupported file type: ' + ext + '\nAllowed: ' + allowedExts.join(', '));
+                return;
+            }
+
+            const maxMb = /*[[${@appProperties.maxFileSizeMb}]]*/ 500;
+            if (file.size > maxMb * 1024 * 1024) {
+                alert('File exceeds maximum size of ' + maxMb + ' MB.');
+                return;
+            }
+
             const formData = new FormData(form);
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');

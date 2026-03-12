@@ -10,10 +10,10 @@ import java.util.Optional;
 
 public interface UploadJobRepository extends JpaRepository<UploadJob, Long> {
 
-    List<UploadJob> findByStatusOrderByCreatedAtAsc(UploadStatus status);
+    List<UploadJob> findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus status);
 
-    Optional<UploadJob> findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
+    Optional<UploadJob> findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
             UploadStatus status, Instant before);
 
-    List<UploadJob> findAllByOrderByCreatedAtDesc();
+    List<UploadJob> findAllByOrderBySortOrderAscCreatedAtDesc();
 }
