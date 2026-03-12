@@ -19,10 +19,6 @@ RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
 
 COPY --from=build --chown=appuser:appuser /app/build/libs/*.jar app.jar
 
-# Pass these at runtime: docker run -e YOUTUBE_CLIENT_ID=... -e YOUTUBE_CLIENT_SECRET=...
-ENV YOUTUBE_CLIENT_ID=""
-ENV YOUTUBE_CLIENT_SECRET=""
-
 EXPOSE 8080
 
 VOLUME ["/app/data", "/app/uploads"]
