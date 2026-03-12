@@ -15,6 +15,7 @@ public class SettingsService {
     public static final String KEY_DEFAULT_CATEGORY = "default_category";
     public static final String KEY_OAUTH_ACCESS_TOKEN = "oauth_access_token";
     public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
+    public static final String KEY_OAUTH_TOKEN_EXPIRY = "oauth_token_expiry_seconds";
 
     private final AppSettingRepository appSettingRepository;
 

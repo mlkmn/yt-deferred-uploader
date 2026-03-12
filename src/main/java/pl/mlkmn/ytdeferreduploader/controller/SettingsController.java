@@ -62,6 +62,10 @@ public class SettingsController {
                     .execute();
             settingsService.set(SettingsService.KEY_OAUTH_ACCESS_TOKEN, tokenResponse.getAccessToken());
             settingsService.set(SettingsService.KEY_OAUTH_REFRESH_TOKEN, tokenResponse.getRefreshToken());
+            if (tokenResponse.getExpiresInSeconds() != null) {
+                settingsService.set(SettingsService.KEY_OAUTH_TOKEN_EXPIRY,
+                        String.valueOf(tokenResponse.getExpiresInSeconds()));
+            }
             redirectAttributes.addFlashAttribute("success", "YouTube account linked successfully");
         } catch (Exception e) {
             log.error("OAuth callback failed", e);
@@ -74,6 +78,7 @@ public class SettingsController {
     public String disconnectOAuth(RedirectAttributes redirectAttributes) {
         settingsService.delete(SettingsService.KEY_OAUTH_ACCESS_TOKEN);
         settingsService.delete(SettingsService.KEY_OAUTH_REFRESH_TOKEN);
+        settingsService.delete(SettingsService.KEY_OAUTH_TOKEN_EXPIRY);
         redirectAttributes.addFlashAttribute("success", "YouTube account disconnected");
         return "redirect:/settings";
     }

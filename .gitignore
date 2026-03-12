@@ -22,3 +22,6 @@ Thumbs.db
 
 ### Gradle Wrapper ###
 !gradle/wrapper/gradle-wrapper.jar
+
+### Claude ###
+.claude
