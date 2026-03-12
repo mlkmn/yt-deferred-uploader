@@ -20,19 +20,21 @@
                     <form id="uploadForm" method="post" th:action="@{/upload}" enctype="multipart/form-data">
 
                         <div class="mb-3">
-                            <label for="file" class="form-label">Video file</label>
+                            <label for="file" class="form-label">Video file(s)</label>
                             <input type="file" class="form-control" id="file" name="file"
-                                   accept=".mp4,.mov,.avi,.mkv,.webm,.flv" required>
+                                   accept=".mp4,.mov,.avi,.mkv,.webm,.flv" multiple required>
                             <div class="form-text">
                                 Allowed: MP4, MOV, AVI, MKV, WebM, FLV.
-                                Max size: <span th:text="${@appProperties.maxFileSizeMb}"></span> MB.
+                                Max size: <span th:text="${@appProperties.maxFileSizeMb}"></span> MB per file.
+                                Select multiple files for bulk upload.
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3" id="titleGroup">
                             <label for="title" class="form-label">Title</label>
                             <input type="text" class="form-control" id="title" name="title"
-                                   maxlength="100" required>
+                                   maxlength="100">
+                            <div class="form-text" id="titleHint"></div>
                         </div>
 
                         <div class="mb-3">
@@ -68,9 +70,15 @@
                             </select>
                         </div>
 
-                        <div class="progress mb-3 d-none" id="progressContainer">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                 id="progressBar" role="progressbar" style="width: 0%">0%</div>
+                        <div class="mb-3 d-none" id="progressContainer">
+                            <div class="d-flex justify-content-between mb-1">
+                                <small id="progressLabel" class="text-muted"></small>
+                                <small id="progressPct" class="text-muted"></small>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                     id="progressBar" role="progressbar" style="width: 0%"></div>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary" id="submitBtn">Upload</button>
@@ -81,11 +89,11 @@
     </div>
 
     <script>
-        document.getElementById('file').addEventListener('change', function() {
-            const titleInput = document.getElementById('title');
-            if (titleInput.value) return; // don't overwrite user-entered title
-            const file = this.files[0];
-            if (!file) return;
+        const fileInput = document.getElementById('file');
+        const titleInput = document.getElementById('title');
+        const titleHint = document.getElementById('titleHint');
+
+        function formatFileDate(file) {
             const d = new Date(file.lastModified);
             const dd = String(d.getDate()).padStart(2, '0');
             const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -93,65 +101,143 @@
             const hh = String(d.getHours()).padStart(2, '0');
             const mi = String(d.getMinutes()).padStart(2, '0');
             const ss = String(d.getSeconds()).padStart(2, '0');
-            titleInput.value = dd + '-' + mm + '-' + yyyy + '_' + hh + mi + ss;
+            return dd + '-' + mm + '-' + yyyy + '_' + hh + mi + ss;
+        }
+
+        fileInput.addEventListener('change', function() {
+            const files = this.files;
+            if (files.length === 1) {
+                titleInput.disabled = false;
+                titleHint.textContent = '';
+                if (!titleInput.value) {
+                    titleInput.value = formatFileDate(files[0]);
+                }
+            } else if (files.length > 1) {
+                titleInput.value = '';
+                titleInput.disabled = true;
+                titleHint.textContent = files.length + ' files selected — each will be titled by its file date (DD-MM-YYYY_HHMMSS)';
+            }
         });
 
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const form = this;
-            const fileInput = document.getElementById('file');
-            const file = fileInput.files[0];
+            const files = fileInput.files;
 
-            if (!file) { alert('Please select a file.'); return; }
+            if (!files.length) { alert('Please select a file.'); return; }
 
             const allowedExts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv'];
-            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-            if (!allowedExts.includes(ext)) {
-                alert('Unsupported file type: ' + ext + '\nAllowed: ' + allowedExts.join(', '));
-                return;
-            }
-
             const maxMb = /*[[${@appProperties.maxFileSizeMb}]]*/ 500;
-            if (file.size > maxMb * 1024 * 1024) {
-                alert('File exceeds maximum size of ' + maxMb + ' MB.');
-                return;
+            const maxBytes = maxMb * 1024 * 1024;
+
+            for (const file of files) {
+                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                if (!allowedExts.includes(ext)) {
+                    alert('Unsupported file type: ' + file.name + '\nAllowed: ' + allowedExts.join(', '));
+                    return;
+                }
+                if (file.size > maxBytes) {
+                    alert(file.name + ' exceeds maximum size of ' + maxMb + ' MB.');
+                    return;
+                }
             }
 
-            const formData = new FormData(form);
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
+            const progressLabel = document.getElementById('progressLabel');
+            const progressPct = document.getElementById('progressPct');
             const submitBtn = document.getElementById('submitBtn');
 
             progressContainer.classList.remove('d-none');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Uploading…';
+            fileInput.disabled = true;
 
+            if (files.length === 1) {
+                submitBtn.textContent = 'Uploading\u2026';
+                progressLabel.textContent = files[0].name;
+                const formData = new FormData(form);
+                // Re-enable file input for FormData (it was disabled)
+                fileInput.disabled = false;
+                sendFile(formData, progressBar, progressPct, function() {
+                    window.location.href = '/queue';
+                }, function() {
+                    showError(progressBar, progressPct, submitBtn, fileInput);
+                });
+                fileInput.disabled = true;
+            } else {
+                uploadSequentially(Array.from(files), 0, form, progressBar, progressLabel, progressPct, submitBtn);
+            }
+        });
+
+        function uploadSequentially(files, index, form, progressBar, progressLabel, progressPct, submitBtn) {
+            if (index >= files.length) {
+                window.location.href = '/queue';
+                return;
+            }
+
+            const file = files[index];
+            submitBtn.textContent = 'Uploading ' + (index + 1) + '/' + files.length + '\u2026';
+            progressLabel.textContent = file.name;
+            progressBar.style.width = '0%';
+            progressPct.textContent = '0%';
+            progressBar.classList.remove('bg-danger');
+            progressBar.classList.add('progress-bar-animated');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('description', form.elements['description'].value);
+            formData.append('tags', form.elements['tags'].value);
+            formData.append('privacyStatus', form.elements['privacyStatus'].value);
+            if (form.elements['playlistId']) {
+                formData.append('playlistId', form.elements['playlistId'].value);
+            }
+            const csrfInput = form.querySelector('input[name="_csrf"]');
+            if (csrfInput) {
+                formData.append('_csrf', csrfInput.value);
+            }
+
+            sendFile(formData, progressBar, progressPct, function() {
+                uploadSequentially(files, index + 1, form, progressBar, progressLabel, progressPct, submitBtn);
+            }, function() {
+                // Continue with remaining files on error
+                uploadSequentially(files, index + 1, form, progressBar, progressLabel, progressPct, submitBtn);
+            });
+        }
+
+        function sendFile(formData, progressBar, progressPct, onSuccess, onError) {
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', form.action, true);
+            xhr.open('POST', '/upload', true);
 
             xhr.upload.addEventListener('progress', function(e) {
                 if (e.lengthComputable) {
                     const pct = Math.round((e.loaded / e.total) * 100);
                     progressBar.style.width = pct + '%';
-                    progressBar.textContent = pct + '%';
+                    progressPct.textContent = pct + '%';
                 }
             });
 
             xhr.addEventListener('load', function() {
-                // Follow redirect — server sends 302 to /queue or /upload
-                window.location.href = xhr.responseURL;
+                onSuccess();
             });
 
             xhr.addEventListener('error', function() {
                 progressBar.classList.remove('progress-bar-animated');
                 progressBar.classList.add('bg-danger');
-                progressBar.textContent = 'Upload failed';
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Upload';
+                progressPct.textContent = 'Failed';
+                setTimeout(onError, 1000);
             });
 
             xhr.send(formData);
-        });
+        }
+
+        function showError(progressBar, progressPct, submitBtn, fileInput) {
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-danger');
+            progressPct.textContent = 'Upload failed';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Upload';
+            fileInput.disabled = false;
+        }
     </script>
 
 </div>

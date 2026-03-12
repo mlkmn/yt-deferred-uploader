@@ -14,7 +14,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.UUID;
 
@@ -31,6 +34,9 @@ public class VideoService {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             ".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"
     );
+
+    private static final DateTimeFormatter TITLE_FORMAT =
+            DateTimeFormatter.ofPattern("dd-MM-yyyy_HHmmss");
 
     private final UploadJobRepository uploadJobRepository;
     private final AppProperties appProperties;
@@ -54,8 +60,10 @@ public class VideoService {
         log.info("File saved: path={}, size={} bytes, originalName={}",
                 targetPath, file.getSize(), originalFilename);
 
+        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(targetPath);
+
         UploadJob job = new UploadJob();
-        job.setTitle(title);
+        job.setTitle(resolvedTitle);
         job.setDescription(description);
         job.setTags(tags);
         if (privacyStatus != null && !privacyStatus.isBlank()) {
@@ -73,6 +81,17 @@ public class VideoService {
         log.info("Upload job created: jobId={}, title='{}', status={}, privacy={}",
                 saved.getId(), saved.getTitle(), saved.getStatus(), saved.getPrivacyStatus());
         return saved;
+    }
+
+    private String generateTitle(Path filePath) {
+        try {
+            BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
+            Instant creationTime = attrs.creationTime().toInstant();
+            return TITLE_FORMAT.format(creationTime.atZone(ZoneId.systemDefault()));
+        } catch (IOException e) {
+            log.warn("Could not read file attributes for title generation, using current time");
+            return TITLE_FORMAT.format(Instant.now().atZone(ZoneId.systemDefault()));
+        }
     }
 
     private void validateFile(MultipartFile file) {

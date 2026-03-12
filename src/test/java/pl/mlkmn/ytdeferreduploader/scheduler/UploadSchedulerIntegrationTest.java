@@ -6,23 +6,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
-import pl.mlkmn.ytdeferreduploader.repository.QuotaLogRepository;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeUploadService;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -30,21 +27,20 @@ class UploadSchedulerIntegrationTest {
 
     @Autowired private UploadScheduler scheduler;
     @Autowired private UploadJobRepository jobRepository;
-    @Autowired private QuotaLogRepository quotaLogRepository;
-    @Autowired private AppProperties appProperties;
 
     @MockitoBean private YouTubeUploadService uploadService;
     @MockitoBean private YouTubeCredentialService credentialService;
+    @MockitoBean private QuotaTracker quotaTracker;
 
     @BeforeEach
     void setUp() {
         jobRepository.deleteAll();
-        quotaLogRepository.deleteAll();
         when(credentialService.isConnected()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
     }
 
     @Test
-    void fullUploadFlow_jobCompletesAndQuotaRecorded() {
+    void fullUploadFlow_jobCompletes() {
         UploadJob job = createAndSaveJob();
         when(uploadService.upload(any())).thenReturn("yt-integration-123");
 
@@ -54,10 +50,6 @@ class UploadSchedulerIntegrationTest {
         assertEquals(UploadStatus.COMPLETED, result.getStatus());
         assertEquals("yt-integration-123", result.getYoutubeId());
         assertNotNull(result.getUploadedAt());
-
-        LocalDate today = LocalDate.now(ZoneId.of(appProperties.getYoutube().getQuotaResetTimezone()));
-        int unitsUsed = quotaLogRepository.findById(today).orElseThrow().getUnitsUsed();
-        assertEquals(appProperties.getYoutube().getUploadCostUnits(), unitsUsed);
     }
 
     @Test
@@ -89,34 +81,17 @@ class UploadSchedulerIntegrationTest {
     }
 
     @Test
-    void multipleUploads_quotaAccumulates() {
-        when(uploadService.upload(any())).thenReturn("yt-1", "yt-2");
-        createAndSaveJob();
-        scheduler.pollAndUpload();
-        createAndSaveJob();
-        scheduler.pollAndUpload();
+    void quotaExhausted_marksExhaustedAndDefersJobs() {
+        UploadJob job = createAndSaveJob();
+        UploadJob job2 = createAndSaveJob();
+        when(uploadService.upload(any()))
+                .thenThrow(new UploadException("Quota exceeded", null, false, true));
 
-        LocalDate today = LocalDate.now(ZoneId.of(appProperties.getYoutube().getQuotaResetTimezone()));
-        int unitsUsed = quotaLogRepository.findById(today).orElseThrow().getUnitsUsed();
-        assertEquals(appProperties.getYoutube().getUploadCostUnits() * 2, unitsUsed);
-    }
-
-    @Test
-    void quotaExhausted_jobsDeferred() {
-        // Use up quota first
-        when(uploadService.upload(any())).thenReturn("yt-fill");
-        for (int i = 0; i < 6; i++) {
-            createAndSaveJob();
-            scheduler.pollAndUpload();
-        }
-
-        // Now create a job that should be deferred
-        UploadJob deferred = createAndSaveJob();
         scheduler.pollAndUpload();
 
-        UploadJob result = jobRepository.findById(deferred.getId()).orElseThrow();
+        verify(quotaTracker).markExhausted();
+        UploadJob result = jobRepository.findById(job.getId()).orElseThrow();
         assertEquals(UploadStatus.PENDING, result.getStatus());
-        // scheduledAt should be pushed to next midnight in quota timezone
         assertTrue(result.getScheduledAt().isAfter(Instant.now()));
     }
 

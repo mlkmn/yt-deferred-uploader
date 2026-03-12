@@ -97,8 +97,9 @@ public class YouTubeUploadService {
             }
         } catch (GoogleJsonResponseException e) {
             boolean permanent = PERMANENT_HTTP_CODES.contains(e.getStatusCode());
+            boolean quotaExhausted = e.getStatusCode() == 429;
             throw new UploadException("YouTube API error (" + e.getStatusCode() + "): "
-                    + e.getDetails().getMessage(), e, permanent);
+                    + e.getDetails().getMessage(), e, permanent, quotaExhausted);
         } catch (TokenResponseException e) {
             throw new UploadException("Token error: " + e.getMessage(), e, true);
         } catch (NoSuchFileException e) {

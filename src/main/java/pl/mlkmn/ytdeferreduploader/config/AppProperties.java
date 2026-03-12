@@ -24,8 +24,6 @@ public class AppProperties {
         private String clientId = "";
         private String clientSecret = "";
         private String redirectUri = "http://localhost:8080/settings/oauth/callback";
-        private int dailyQuotaLimit = 10000;
-        private int uploadCostUnits = 1600;
         private String quotaResetTimezone = "Europe/Warsaw";
     }
 

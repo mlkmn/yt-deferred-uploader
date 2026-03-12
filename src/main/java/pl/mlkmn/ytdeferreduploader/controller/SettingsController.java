@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 
@@ -23,6 +24,7 @@ public class SettingsController {
     private final GoogleAuthorizationCodeFlow authFlow;
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
+    private final QuotaTracker quotaTracker;
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
@@ -41,6 +43,7 @@ public class SettingsController {
         if (youtubeConnected) {
             model.addAttribute("playlists", playlistService.getUserPlaylists());
         }
+        model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
         return "settings";
     }
 
@@ -79,6 +82,13 @@ public class SettingsController {
         settingsService.delete(SettingsService.KEY_OAUTH_REFRESH_TOKEN);
         settingsService.delete(SettingsService.KEY_OAUTH_TOKEN_EXPIRY);
         redirectAttributes.addFlashAttribute("success", "YouTube account disconnected");
+        return "redirect:/settings";
+    }
+
+    @PostMapping("/settings/quota/reset")
+    public String resetQuota(RedirectAttributes redirectAttributes) {
+        quotaTracker.reset();
+        redirectAttributes.addFlashAttribute("success", "Quota status reset");
         return "redirect:/settings";
     }
 

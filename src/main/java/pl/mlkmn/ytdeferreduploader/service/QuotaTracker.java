@@ -4,8 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
-import pl.mlkmn.ytdeferreduploader.model.QuotaLog;
-import pl.mlkmn.ytdeferreduploader.repository.QuotaLogRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -15,41 +13,27 @@ import java.time.ZoneId;
 @RequiredArgsConstructor
 public class QuotaTracker {
 
-    private final QuotaLogRepository quotaLogRepository;
+    private static final String KEY_QUOTA_EXHAUSTED_DATE = "quota_exhausted_date";
+
+    private final SettingsService settingsService;
     private final AppProperties appProperties;
 
-    public int getUnitsUsedToday() {
+    public boolean isExhausted() {
+        return settingsService.get(KEY_QUOTA_EXHAUSTED_DATE)
+                .map(LocalDate::parse)
+                .filter(date -> date.equals(todayInQuotaZone()))
+                .isPresent();
+    }
+
+    public void markExhausted() {
         LocalDate today = todayInQuotaZone();
-        return quotaLogRepository.findById(today)
-                .map(QuotaLog::getUnitsUsed)
-                .orElse(0);
+        settingsService.set(KEY_QUOTA_EXHAUSTED_DATE, today.toString());
+        log.info("Quota marked as exhausted for date={}", today);
     }
 
-    public int getRemainingUnits() {
-        return appProperties.getYoutube().getDailyQuotaLimit() - getUnitsUsedToday();
-    }
-
-    public boolean hasQuotaFor(int units) {
-        return getRemainingUnits() >= units;
-    }
-
-    public boolean canUpload() {
-        return hasQuotaFor(appProperties.getYoutube().getUploadCostUnits());
-    }
-
-    public void recordUsage(int units) {
-        LocalDate today = todayInQuotaZone();
-        QuotaLog quotaLog = quotaLogRepository.findById(today)
-                .orElse(new QuotaLog(today));
-        quotaLog.setUnitsUsed(quotaLog.getUnitsUsed() + units);
-        quotaLogRepository.save(quotaLog);
-        int remaining = appProperties.getYoutube().getDailyQuotaLimit() - quotaLog.getUnitsUsed();
-        log.info("Quota usage recorded: units={}, date={}, totalUsed={}, remaining={}",
-                units, today, quotaLog.getUnitsUsed(), remaining);
-    }
-
-    public void recordUpload() {
-        recordUsage(appProperties.getYoutube().getUploadCostUnits());
+    public void reset() {
+        settingsService.delete(KEY_QUOTA_EXHAUSTED_DATE);
+        log.info("Quota reset manually");
     }
 
     private LocalDate todayInQuotaZone() {

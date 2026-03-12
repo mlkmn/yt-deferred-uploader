@@ -3,136 +3,75 @@ package pl.mlkmn.ytdeferreduploader.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
-import pl.mlkmn.ytdeferreduploader.model.QuotaLog;
-import pl.mlkmn.ytdeferreduploader.repository.QuotaLogRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class QuotaTrackerTest {
 
     @Mock
-    private QuotaLogRepository quotaLogRepository;
+    private SettingsService settingsService;
 
-    private AppProperties appProperties;
     private QuotaTracker quotaTracker;
 
     @BeforeEach
     void setUp() {
-        appProperties = new AppProperties();
-        appProperties.getYoutube().setDailyQuotaLimit(10000);
-        appProperties.getYoutube().setUploadCostUnits(1600);
+        AppProperties appProperties = new AppProperties();
         appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
-        quotaTracker = new QuotaTracker(quotaLogRepository, appProperties);
+        quotaTracker = new QuotaTracker(settingsService, appProperties);
     }
 
     @Test
-    void getUnitsUsedToday_noLogEntry_returnsZero() {
-        when(quotaLogRepository.findById(any(LocalDate.class))).thenReturn(Optional.empty());
+    void isExhausted_noEntry_returnsFalse() {
+        when(settingsService.get("quota_exhausted_date")).thenReturn(Optional.empty());
 
-        assertEquals(0, quotaTracker.getUnitsUsedToday());
+        assertFalse(quotaTracker.isExhausted());
     }
 
     @Test
-    void getUnitsUsedToday_withLogEntry_returnsUnits() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Warsaw"));
-        QuotaLog log = new QuotaLog(today);
-        log.setUnitsUsed(3200);
-        when(quotaLogRepository.findById(today)).thenReturn(Optional.of(log));
+    void isExhausted_todayEntry_returnsTrue() {
+        String today = LocalDate.now(ZoneId.of("Europe/Warsaw")).toString();
+        when(settingsService.get("quota_exhausted_date")).thenReturn(Optional.of(today));
 
-        assertEquals(3200, quotaTracker.getUnitsUsedToday());
+        assertTrue(quotaTracker.isExhausted());
     }
 
     @Test
-    void getRemainingUnits_noUsage_returnsFullQuota() {
-        when(quotaLogRepository.findById(any(LocalDate.class))).thenReturn(Optional.empty());
+    void isExhausted_yesterdayEntry_returnsFalse() {
+        String yesterday = LocalDate.now(ZoneId.of("Europe/Warsaw")).minusDays(1).toString();
+        when(settingsService.get("quota_exhausted_date")).thenReturn(Optional.of(yesterday));
 
-        assertEquals(10000, quotaTracker.getRemainingUnits());
+        assertFalse(quotaTracker.isExhausted());
     }
 
     @Test
-    void getRemainingUnits_withUsage_returnsRemaining() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Warsaw"));
-        QuotaLog log = new QuotaLog(today);
-        log.setUnitsUsed(4800);
-        when(quotaLogRepository.findById(today)).thenReturn(Optional.of(log));
+    void markExhausted_storesTodayDate() {
+        quotaTracker.markExhausted();
 
-        assertEquals(5200, quotaTracker.getRemainingUnits());
+        String today = LocalDate.now(ZoneId.of("Europe/Warsaw")).toString();
+        verify(settingsService).set("quota_exhausted_date", today);
     }
 
     @Test
-    void canUpload_enoughQuota_returnsTrue() {
-        when(quotaLogRepository.findById(any(LocalDate.class))).thenReturn(Optional.empty());
+    void reset_deletesEntry() {
+        quotaTracker.reset();
 
-        assertTrue(quotaTracker.canUpload());
+        verify(settingsService).delete("quota_exhausted_date");
     }
 
     @Test
-    void canUpload_notEnoughQuota_returnsFalse() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Warsaw"));
-        QuotaLog log = new QuotaLog(today);
-        log.setUnitsUsed(9000);
-        when(quotaLogRepository.findById(today)).thenReturn(Optional.of(log));
+    void isExhausted_afterReset_returnsFalse() {
+        when(settingsService.get("quota_exhausted_date")).thenReturn(Optional.empty());
 
-        assertFalse(quotaTracker.canUpload());
-    }
-
-    @Test
-    void canUpload_exactlyEnoughQuota_returnsTrue() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Warsaw"));
-        QuotaLog log = new QuotaLog(today);
-        log.setUnitsUsed(8400); // 10000 - 8400 = 1600 = exactly upload cost
-        when(quotaLogRepository.findById(today)).thenReturn(Optional.of(log));
-
-        assertTrue(quotaTracker.canUpload());
-    }
-
-    @Test
-    void recordUsage_noExistingEntry_createsNew() {
-        when(quotaLogRepository.findById(any(LocalDate.class))).thenReturn(Optional.empty());
-        when(quotaLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        quotaTracker.recordUsage(1600);
-
-        ArgumentCaptor<QuotaLog> captor = ArgumentCaptor.forClass(QuotaLog.class);
-        verify(quotaLogRepository).save(captor.capture());
-        assertEquals(1600, captor.getValue().getUnitsUsed());
-    }
-
-    @Test
-    void recordUsage_existingEntry_addsToExisting() {
-        LocalDate today = LocalDate.now(ZoneId.of("Europe/Warsaw"));
-        QuotaLog log = new QuotaLog(today);
-        log.setUnitsUsed(3200);
-        when(quotaLogRepository.findById(today)).thenReturn(Optional.of(log));
-        when(quotaLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        quotaTracker.recordUsage(1600);
-
-        ArgumentCaptor<QuotaLog> captor = ArgumentCaptor.forClass(QuotaLog.class);
-        verify(quotaLogRepository).save(captor.capture());
-        assertEquals(4800, captor.getValue().getUnitsUsed());
-    }
-
-    @Test
-    void recordUpload_usesConfiguredCost() {
-        when(quotaLogRepository.findById(any(LocalDate.class))).thenReturn(Optional.empty());
-        when(quotaLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        quotaTracker.recordUpload();
-
-        ArgumentCaptor<QuotaLog> captor = ArgumentCaptor.forClass(QuotaLog.class);
-        verify(quotaLogRepository).save(captor.capture());
-        assertEquals(1600, captor.getValue().getUnitsUsed());
+        quotaTracker.reset();
+        assertFalse(quotaTracker.isExhausted());
     }
 }

@@ -28,6 +28,22 @@
                 </div>
             </div>
 
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">YouTube Quota</h5></div>
+                <div class="card-body">
+                    <div th:if="${quotaExhausted}">
+                        <p class="text-danger mb-2">Quota exhausted — uploads are paused until the next YouTube quota reset.</p>
+                        <form method="post" th:action="@{/settings/quota/reset}" style="display:inline">
+                            <button type="submit" class="btn btn-outline-warning btn-sm"
+                                    onclick="return confirm('Reset quota status? Only do this if you know YouTube quota has been restored.')">Reset Quota</button>
+                        </form>
+                    </div>
+                    <div th:unless="${quotaExhausted}">
+                        <p class="text-success mb-0">Quota available — uploads will proceed normally.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header"><h5 class="mb-0">Default Metadata</h5></div>
                 <div class="card-body">

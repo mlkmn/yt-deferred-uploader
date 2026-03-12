@@ -40,7 +40,6 @@ class UploadSchedulerTest {
     void setUp() {
         appProperties = new AppProperties();
         appProperties.getScheduler().setMaxRetries(3);
-        appProperties.getYoutube().setDailyQuotaLimit(10000);
         appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
         scheduler = new UploadScheduler(jobRepository, uploadService,
                 credentialService, playlistService, quotaTracker, appProperties);
@@ -56,27 +55,19 @@ class UploadSchedulerTest {
     }
 
     @Test
-    void pollAndUpload_noQuota_defersJobs() {
+    void pollAndUpload_quotaExhausted_skips() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(false);
-        when(quotaTracker.getUnitsUsedToday()).thenReturn(9600);
-
-        UploadJob job = createJob(1L, UploadStatus.PENDING);
-        when(jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING))
-                .thenReturn(List.of(job));
-        when(jobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(quotaTracker.isExhausted()).thenReturn(true);
 
         scheduler.pollAndUpload();
 
         verifyNoInteractions(uploadService);
-        assertNotNull(job.getScheduledAt());
-        assertTrue(job.getScheduledAt().isAfter(Instant.now()));
     }
 
     @Test
     void pollAndUpload_noPendingJobs_doesNothing() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
         when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.empty());
@@ -89,7 +80,7 @@ class UploadSchedulerTest {
     @Test
     void pollAndUpload_successfulUpload_completesJob() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
@@ -103,13 +94,12 @@ class UploadSchedulerTest {
         assertEquals(UploadStatus.COMPLETED, job.getStatus());
         assertEquals("yt-abc123", job.getYoutubeId());
         assertNotNull(job.getUploadedAt());
-        verify(quotaTracker).recordUpload();
     }
 
     @Test
     void pollAndUpload_transientFailure_retriesWithBackoff() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
@@ -130,7 +120,7 @@ class UploadSchedulerTest {
     @Test
     void pollAndUpload_transientFailure_maxRetriesExhausted_fails() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         job.setRetryCount(3); // already at max
@@ -150,7 +140,7 @@ class UploadSchedulerTest {
     @Test
     void pollAndUpload_permanentFailure_failsImmediately() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
@@ -163,14 +153,14 @@ class UploadSchedulerTest {
         scheduler.pollAndUpload();
 
         assertEquals(UploadStatus.FAILED, job.getStatus());
-        assertEquals(0, job.getRetryCount()); // no retry attempted
+        assertEquals(0, job.getRetryCount());
         assertEquals("Invalid video", job.getErrorMessage());
     }
 
     @Test
     void pollAndUpload_permanentFailure_doesNotRetryEvenIfRetriesRemain() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         job.setRetryCount(0);
@@ -184,13 +174,36 @@ class UploadSchedulerTest {
         scheduler.pollAndUpload();
 
         assertEquals(UploadStatus.FAILED, job.getStatus());
-        verify(quotaTracker, never()).recordUpload();
+    }
+
+    @Test
+    void pollAndUpload_quotaExhaustedByYouTube_marksExhaustedAndDefersJobs() {
+        when(credentialService.isConnected()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
+
+        UploadJob job = createJob(1L, UploadStatus.PENDING);
+        UploadJob pendingJob = createJob(2L, UploadStatus.PENDING);
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+                eq(UploadStatus.PENDING), any(Instant.class)))
+                .thenReturn(Optional.of(job));
+        when(uploadService.upload(job))
+                .thenThrow(new UploadException("Quota exceeded", null, false, true));
+        when(jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING))
+                .thenReturn(List.of(pendingJob));
+        when(jobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        scheduler.pollAndUpload();
+
+        verify(quotaTracker).markExhausted();
+        assertEquals(UploadStatus.PENDING, job.getStatus());
+        assertTrue(job.getScheduledAt().isAfter(Instant.now()));
+        assertTrue(pendingJob.getScheduledAt().isAfter(Instant.now()));
     }
 
     @Test
     void pollAndUpload_successfulUpload_setsUploadingThenCompleted() {
         when(credentialService.isConnected()).thenReturn(true);
-        when(quotaTracker.canUpload()).thenReturn(true);
+        when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(

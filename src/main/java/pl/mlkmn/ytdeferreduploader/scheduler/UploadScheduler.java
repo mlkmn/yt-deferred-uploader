@@ -38,11 +38,8 @@ public class UploadScheduler {
             return;
         }
 
-        if (!quotaTracker.canUpload()) {
-            log.info("Daily quota exhausted: used={}, limit={}, deferring remaining jobs",
-                    quotaTracker.getUnitsUsedToday(),
-                    appProperties.getYoutube().getDailyQuotaLimit());
-            deferPendingJobs();
+        if (quotaTracker.isExhausted()) {
+            log.debug("Quota exhausted for today, skipping poll");
             return;
         }
 
@@ -67,15 +64,22 @@ public class UploadScheduler {
             job.setStatus(UploadStatus.COMPLETED);
             job.setYoutubeId(youtubeId);
             job.setUploadedAt(Instant.now());
-            quotaTracker.recordUpload();
             log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
                     job.getId(), youtubeId, job.getTitle());
             addToPlaylistIfConfigured(job);
         } catch (UploadException e) {
-            log.error("Upload failed: jobId={}, permanent={}, error={}",
-                    job.getId(), e.isPermanent(), e.getMessage(), e);
+            log.error("Upload failed: jobId={}, permanent={}, quotaExhausted={}, error={}",
+                    job.getId(), e.isPermanent(), e.isQuotaExhausted(), e.getMessage(), e);
             job.setErrorMessage(e.getMessage());
-            if (e.isPermanent()) {
+
+            if (e.isQuotaExhausted()) {
+                quotaTracker.markExhausted();
+                job.setStatus(UploadStatus.PENDING);
+                job.setScheduledAt(nextQuotaReset());
+                log.info("Quota exhausted by YouTube, deferring job: jobId={}, nextReset={}",
+                        job.getId(), nextQuotaReset());
+                deferPendingJobs();
+            } else if (e.isPermanent()) {
                 job.setStatus(UploadStatus.FAILED);
                 log.warn("Job permanently failed: jobId={}, error={}", job.getId(), e.getMessage());
             } else {
@@ -108,7 +112,6 @@ public class UploadScheduler {
 
         try {
             playlistService.addVideoToPlaylist(playlistId, job.getYoutubeId());
-            quotaTracker.recordUsage(50); // playlistItems.insert costs 50 units
         } catch (Exception e) {
             log.warn("Failed to add video to playlist: jobId={}, playlistId={}, error={}",
                     job.getId(), playlistId, e.getMessage());

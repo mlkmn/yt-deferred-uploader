@@ -14,6 +14,9 @@ import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -95,11 +98,27 @@ public class QueueController {
         } else if (job.getStatus() == UploadStatus.UPLOADING) {
             redirectAttributes.addFlashAttribute("error", "Cannot delete a job that is currently uploading");
         } else {
+            deleteLocalFile(job);
             uploadJobRepository.delete(job);
             log.info("Job deleted: jobId={}, title='{}', status={}", id, job.getTitle(), job.getStatus());
             redirectAttributes.addFlashAttribute("success", "Job #" + id + " deleted");
         }
         return "redirect:/queue";
+    }
+
+    private void deleteLocalFile(UploadJob job) {
+        if (job.getFilePath() == null) {
+            return;
+        }
+        try {
+            boolean deleted = Files.deleteIfExists(Path.of(job.getFilePath()));
+            if (deleted) {
+                log.info("Local file deleted: jobId={}, path={}", job.getId(), job.getFilePath());
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete local file: jobId={}, path={}, error={}",
+                    job.getId(), job.getFilePath(), e.getMessage());
+        }
     }
 
     @PostMapping("/queue/reorder")
