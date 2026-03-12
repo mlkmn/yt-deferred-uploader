@@ -60,6 +60,18 @@
                                    th:value="${defaultCategory}" placeholder="e.g. 22 (People & Blogs)">
                         </div>
 
+                        <div class="mb-3" th:if="${youtubeConnected}">
+                            <label for="defaultPlaylist" class="form-label">Default playlist</label>
+                            <select class="form-select" id="defaultPlaylist" name="defaultPlaylist">
+                                <option value="">None</option>
+                                <option th:each="pl : ${playlists}"
+                                        th:value="${pl.id}"
+                                        th:text="${pl.snippet.title}"
+                                        th:selected="${pl.id == defaultPlaylist}">
+                                </option>
+                            </select>
+                        </div>
+
                         <button type="submit" class="btn btn-primary">Save Settings</button>
                     </form>
                 </div>

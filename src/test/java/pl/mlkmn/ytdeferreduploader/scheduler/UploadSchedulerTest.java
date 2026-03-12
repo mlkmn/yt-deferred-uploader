@@ -12,6 +12,7 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
+import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeUploadService;
 
 import java.time.Instant;
@@ -29,6 +30,7 @@ class UploadSchedulerTest {
     @Mock private UploadJobRepository jobRepository;
     @Mock private YouTubeUploadService uploadService;
     @Mock private YouTubeCredentialService credentialService;
+    @Mock private YouTubePlaylistService playlistService;
     @Mock private QuotaTracker quotaTracker;
 
     private AppProperties appProperties;
@@ -41,7 +43,7 @@ class UploadSchedulerTest {
         appProperties.getYoutube().setDailyQuotaLimit(10000);
         appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
         scheduler = new UploadScheduler(jobRepository, uploadService,
-                credentialService, quotaTracker, appProperties);
+                credentialService, playlistService, quotaTracker, appProperties);
     }
 
     @Test

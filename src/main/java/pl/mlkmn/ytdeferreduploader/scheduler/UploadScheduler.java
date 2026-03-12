@@ -11,6 +11,7 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
+import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeUploadService;
 
 import java.time.Duration;
@@ -26,6 +27,7 @@ public class UploadScheduler {
     private final UploadJobRepository jobRepository;
     private final YouTubeUploadService uploadService;
     private final YouTubeCredentialService credentialService;
+    private final YouTubePlaylistService playlistService;
     private final QuotaTracker quotaTracker;
     private final AppProperties appProperties;
 
@@ -68,6 +70,7 @@ public class UploadScheduler {
             quotaTracker.recordUpload();
             log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
                     job.getId(), youtubeId, job.getTitle());
+            addToPlaylistIfConfigured(job);
         } catch (UploadException e) {
             log.error("Upload failed: jobId={}, permanent={}, error={}",
                     job.getId(), e.isPermanent(), e.getMessage(), e);
@@ -95,6 +98,21 @@ public class UploadScheduler {
         }
 
         jobRepository.save(job);
+    }
+
+    private void addToPlaylistIfConfigured(UploadJob job) {
+        String playlistId = job.getPlaylistId();
+        if (playlistId == null || playlistId.isBlank()) {
+            return;
+        }
+
+        try {
+            playlistService.addVideoToPlaylist(playlistId, job.getYoutubeId());
+            quotaTracker.recordUsage(50); // playlistItems.insert costs 50 units
+        } catch (Exception e) {
+            log.warn("Failed to add video to playlist: jobId={}, playlistId={}, error={}",
+                    job.getId(), playlistId, e.getMessage());
+        }
     }
 
     private void deferPendingJobs() {

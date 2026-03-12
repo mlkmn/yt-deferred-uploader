@@ -56,6 +56,18 @@
                             </select>
                         </div>
 
+                        <div class="mb-3" th:if="${not #lists.isEmpty(playlists)}">
+                            <label for="playlistId" class="form-label">Playlist</label>
+                            <select class="form-select" id="playlistId" name="playlistId">
+                                <option value="">None</option>
+                                <option th:each="pl : ${playlists}"
+                                        th:value="${pl.id}"
+                                        th:text="${pl.snippet.title}"
+                                        th:selected="${pl.id == defaultPlaylist}">
+                                </option>
+                            </select>
+                        </div>
+
                         <div class="progress mb-3 d-none" id="progressContainer">
                             <div class="progress-bar progress-bar-striped progress-bar-animated"
                                  id="progressBar" role="progressbar" style="width: 0%">0%</div>
@@ -69,6 +81,21 @@
     </div>
 
     <script>
+        document.getElementById('file').addEventListener('change', function() {
+            const titleInput = document.getElementById('title');
+            if (titleInput.value) return; // don't overwrite user-entered title
+            const file = this.files[0];
+            if (!file) return;
+            const d = new Date(file.lastModified);
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            titleInput.value = dd + '-' + mm + '-' + yyyy + '_' + hh + mi + ss;
+        });
+
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const form = this;

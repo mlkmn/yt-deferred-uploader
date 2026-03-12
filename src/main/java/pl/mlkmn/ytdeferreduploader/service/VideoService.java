@@ -36,7 +36,7 @@ public class VideoService {
     private final AppProperties appProperties;
 
     public UploadJob handleUpload(MultipartFile file, String title, String description,
-                                  String tags, String privacyStatus) throws IOException {
+                                  String tags, String privacyStatus, String playlistId) throws IOException {
         validateFile(file);
 
         Path uploadDir = Paths.get(appProperties.getUploadDir()).toAbsolutePath().normalize();
@@ -60,6 +60,9 @@ public class VideoService {
         job.setTags(tags);
         if (privacyStatus != null && !privacyStatus.isBlank()) {
             job.setPrivacyStatus(PrivacyStatus.valueOf(privacyStatus.toUpperCase()));
+        }
+        if (playlistId != null && !playlistId.isBlank()) {
+            job.setPlaylistId(playlistId);
         }
         job.setFilePath(targetPath.toString());
         job.setFileSizeBytes(file.getSize());

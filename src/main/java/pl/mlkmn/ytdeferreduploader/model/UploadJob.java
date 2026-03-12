@@ -56,6 +56,9 @@ public class UploadJob {
     @Column(name = "retry_count")
     private int retryCount = 0;
 
+    @Column(name = "playlist_id", length = 50)
+    private String playlistId;
+
     @Column(name = "sort_order")
     private int sortOrder = 0;
 

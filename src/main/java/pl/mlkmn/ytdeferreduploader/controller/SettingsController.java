@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
+import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 
 @Slf4j
 @Controller
@@ -21,6 +22,7 @@ public class SettingsController {
     private final SettingsService settingsService;
     private final GoogleAuthorizationCodeFlow authFlow;
     private final AppProperties appProperties;
+    private final YouTubePlaylistService playlistService;
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
@@ -32,8 +34,13 @@ public class SettingsController {
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
         model.addAttribute("defaultCategory",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_CATEGORY, ""));
-        model.addAttribute("youtubeConnected",
-                settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent());
+        boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+        model.addAttribute("youtubeConnected", youtubeConnected);
+        model.addAttribute("defaultPlaylist",
+                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+        if (youtubeConnected) {
+            model.addAttribute("playlists", playlistService.getUserPlaylists());
+        }
         return "settings";
     }
 
@@ -80,11 +87,13 @@ public class SettingsController {
                                @RequestParam("defaultTags") String defaultTags,
                                @RequestParam("defaultPrivacy") String defaultPrivacy,
                                @RequestParam("defaultCategory") String defaultCategory,
+                               @RequestParam(value = "defaultPlaylist", required = false) String defaultPlaylist,
                                RedirectAttributes redirectAttributes) {
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_TAGS, defaultTags);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
         settingsService.set(SettingsService.KEY_DEFAULT_CATEGORY, defaultCategory);
+        settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
         redirectAttributes.addFlashAttribute("success", "Settings saved");
         return "redirect:/settings";
     }

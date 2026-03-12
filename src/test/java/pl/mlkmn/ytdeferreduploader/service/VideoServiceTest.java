@@ -50,7 +50,7 @@ class VideoServiceTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "test.mp4", "video/mp4", new byte[]{1, 2, 3});
 
-        UploadJob result = videoService.handleUpload(file, "My Video", "desc", "tag1,tag2", "PUBLIC");
+        UploadJob result = videoService.handleUpload(file, "My Video", "desc", "tag1,tag2", "PUBLIC", null);
 
         assertEquals("My Video", result.getTitle());
         assertEquals("desc", result.getDescription());
@@ -67,7 +67,7 @@ class VideoServiceTest {
                 "file", "test.mp4", "video/mp4", new byte[0]);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null));
+                () -> videoService.handleUpload(file, "title", null, null, null, null));
         assertTrue(ex.getMessage().contains("empty"));
     }
 
@@ -78,7 +78,7 @@ class VideoServiceTest {
                 "file", "test.mp4", "video/mp4", largeContent);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null));
+                () -> videoService.handleUpload(file, "title", null, null, null, null));
         assertTrue(ex.getMessage().contains("exceeds maximum size"));
     }
 
@@ -88,7 +88,7 @@ class VideoServiceTest {
                 "file", "test.txt", "text/plain", new byte[]{1});
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null));
+                () -> videoService.handleUpload(file, "title", null, null, null, null));
         assertTrue(ex.getMessage().contains("Unsupported file type"));
     }
 
@@ -98,7 +98,7 @@ class VideoServiceTest {
                 "file", "test.mp4", null, new byte[]{1});
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null));
+                () -> videoService.handleUpload(file, "title", null, null, null, null));
         assertTrue(ex.getMessage().contains("Unsupported file type"));
     }
 
@@ -108,7 +108,7 @@ class VideoServiceTest {
                 "file", "test.exe", "video/mp4", new byte[]{1});
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null));
+                () -> videoService.handleUpload(file, "title", null, null, null, null));
         assertTrue(ex.getMessage().contains("Unsupported file extension"));
     }
 
@@ -119,7 +119,7 @@ class VideoServiceTest {
         for (String ext : new String[]{".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"}) {
             MockMultipartFile file = new MockMultipartFile(
                     "file", "video" + ext, "video/mp4", new byte[]{1});
-            assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null));
+            assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null, null));
         }
     }
 
@@ -129,6 +129,6 @@ class VideoServiceTest {
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "video.MP4", "video/mp4", new byte[]{1});
-        assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null));
+        assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null, null));
     }
 }

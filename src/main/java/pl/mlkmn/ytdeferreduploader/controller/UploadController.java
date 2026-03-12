@@ -1,25 +1,31 @@
 package pl.mlkmn.ytdeferreduploader.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
+import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.VideoService;
+import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 
 @Controller
+@RequiredArgsConstructor
 public class UploadController {
 
     private final VideoService videoService;
-
-    public UploadController(VideoService videoService) {
-        this.videoService = videoService;
-    }
+    private final YouTubePlaylistService playlistService;
+    private final SettingsService settingsService;
 
     @GetMapping("/upload")
-    public String showUploadForm() {
+    public String showUploadForm(Model model) {
+        model.addAttribute("playlists", playlistService.getUserPlaylists());
+        model.addAttribute("defaultPlaylist",
+                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
         return "upload";
     }
 
@@ -29,9 +35,10 @@ public class UploadController {
                                @RequestParam(value = "description", required = false) String description,
                                @RequestParam(value = "tags", required = false) String tags,
                                @RequestParam(value = "privacyStatus", required = false) String privacyStatus,
+                               @RequestParam(value = "playlistId", required = false) String playlistId,
                                RedirectAttributes redirectAttributes) {
         try {
-            UploadJob job = videoService.handleUpload(file, title, description, tags, privacyStatus);
+            UploadJob job = videoService.handleUpload(file, title, description, tags, privacyStatus, playlistId);
             redirectAttributes.addFlashAttribute("success",
                     "Video \"" + job.getTitle() + "\" queued for upload (Job #" + job.getId() + ")");
         } catch (IllegalArgumentException e) {
