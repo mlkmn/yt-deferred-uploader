@@ -10,6 +10,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import pl.mlkmn.ytdeferreduploader.filter.LoginRateLimitFilter;
 
 @Configuration
 @RequiredArgsConstructor
@@ -19,22 +21,37 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        LoginRateLimitFilter rateLimitFilter = new LoginRateLimitFilter();
+
         http
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/upload", true)
+                        .failureHandler((request, response, exception) -> {
+                            rateLimitFilter.recordFailure(request);
+                            response.sendRedirect("/login?error");
+                        })
+                        .successHandler((request, response, authentication) -> {
+                            rateLimitFilter.clearAttempts(request);
+                            response.sendRedirect("/upload");
+                        })
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/queue/reorder")
+                .headers(headers -> headers
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .maxAgeInSeconds(31536000)
+                                .includeSubDomains(true)
+                        )
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(cto -> {})
                 );
         return http.build();
     }

@@ -128,9 +128,14 @@
                 onEnd: function() {
                     const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
                             .map(row => parseInt(row.dataset.id));
+                    const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
                     fetch('/queue/reorder', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            [csrfHeader]: csrfToken
+                        },
                         body: JSON.stringify(ids)
                     });
                 }

@@ -13,6 +13,7 @@ public class AppProperties {
 
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
+    private String encryptionKey;
     private YouTube youtube = new YouTube();
     private Scheduler scheduler = new Scheduler();
     private Admin admin = new Admin();

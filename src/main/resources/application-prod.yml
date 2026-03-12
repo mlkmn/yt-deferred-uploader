@@ -1,11 +1,26 @@
+server:
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: true
+        same-site: lax
+      timeout: 30m
+
 logging:
   structured:
     format:
       console: logstash
   level:
-    pl.mlkmn.ytdeferreduploader: DEBUG
+    pl.mlkmn.ytdeferreduploader: INFO
 
 spring:
   h2:
     console:
       enabled: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

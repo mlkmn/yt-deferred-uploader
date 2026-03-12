@@ -11,9 +11,13 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN mkdir -p /app/data /app/uploads
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/build/libs/*.jar app.jar
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
+    && mkdir -p /app/data /app/uploads \
+    && chown -R appuser:appuser /app
+
+COPY --from=build --chown=appuser:appuser /app/build/libs/*.jar app.jar
 
 # Pass these at runtime: docker run -e YOUTUBE_CLIENT_ID=... -e YOUTUBE_CLIENT_SECRET=...
 ENV YOUTUBE_CLIENT_ID=""
@@ -22,6 +26,11 @@ ENV YOUTUBE_CLIENT_SECRET=""
 EXPOSE 8080
 
 VOLUME ["/app/data", "/app/uploads"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+USER appuser
 
 ENTRYPOINT ["java", "-jar", "app.jar", \
     "--app.upload-dir=/app/uploads", \

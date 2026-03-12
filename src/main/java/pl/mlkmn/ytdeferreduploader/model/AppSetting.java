@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pl.mlkmn.ytdeferreduploader.crypto.EncryptedStringConverter;
 
 @Entity
 @Table(name = "app_settings")
@@ -18,6 +19,7 @@ public class AppSetting {
     @Column(name = "setting_key", length = 100)
     private String settingKey;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "setting_value", columnDefinition = "TEXT")
     private String settingValue;
 }

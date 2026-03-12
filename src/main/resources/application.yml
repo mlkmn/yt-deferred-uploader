@@ -4,7 +4,7 @@ app:
   youtube:
     client-id: ${YOUTUBE_CLIENT_ID:}
     client-secret: ${YOUTUBE_CLIENT_SECRET:}
-    redirect-uri: http://localhost:8080/settings/oauth/callback
+    redirect-uri: ${APP_YOUTUBE_REDIRECT_URI:http://localhost:8080/settings/oauth/callback}
     quota-reset-timezone: Europe/Warsaw
   scheduler:
     poll-interval-ms: 30000
@@ -12,6 +12,7 @@ app:
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:admin}
+  encryption-key: ${ENCRYPTION_KEY:}
   cleanup:
     enabled: true
     retention-hours: 24
