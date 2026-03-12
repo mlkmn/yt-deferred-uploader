@@ -155,15 +155,22 @@
             if (files.length === 1) {
                 submitBtn.textContent = 'Uploading\u2026';
                 progressLabel.textContent = files[0].name;
-                const formData = new FormData(form);
-                // Re-enable file input for FormData (it was disabled)
-                fileInput.disabled = false;
+                const formData = new FormData();
+                formData.append('file', files[0]);
+                formData.append('title', form.elements['title'].value);
+                formData.append('description', form.elements['description'].value);
+                formData.append('tags', form.elements['tags'].value);
+                formData.append('privacyStatus', form.elements['privacyStatus'].value);
+                if (form.elements['playlistId']) {
+                    formData.append('playlistId', form.elements['playlistId'].value);
+                }
+                const csrfMeta = document.querySelector('meta[name="_csrf"]');
+                if (csrfMeta) formData.append('_csrf', csrfMeta.content);
                 sendFile(formData, progressBar, progressPct, function() {
                     window.location.href = '/queue';
                 }, function() {
                     showError(progressBar, progressPct, submitBtn, fileInput);
                 });
-                fileInput.disabled = true;
             } else {
                 uploadSequentially(Array.from(files), 0, form, progressBar, progressLabel, progressPct, submitBtn);
             }
