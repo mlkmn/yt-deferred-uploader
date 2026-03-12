@@ -16,4 +16,6 @@ public interface UploadJobRepository extends JpaRepository<UploadJob, Long> {
             UploadStatus status, Instant before);
 
     List<UploadJob> findAllByOrderBySortOrderAscCreatedAtDesc();
+
+    List<UploadJob> findByStatusAndUploadedAtBefore(UploadStatus status, Instant before);
 }

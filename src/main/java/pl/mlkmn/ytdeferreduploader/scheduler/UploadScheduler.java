@@ -1,7 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.scheduler;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
@@ -18,28 +18,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class UploadScheduler {
-
-    private static final Logger log = LoggerFactory.getLogger(UploadScheduler.class);
 
     private final UploadJobRepository jobRepository;
     private final YouTubeUploadService uploadService;
     private final YouTubeCredentialService credentialService;
     private final QuotaTracker quotaTracker;
     private final AppProperties appProperties;
-
-    public UploadScheduler(UploadJobRepository jobRepository,
-                           YouTubeUploadService uploadService,
-                           YouTubeCredentialService credentialService,
-                           QuotaTracker quotaTracker,
-                           AppProperties appProperties) {
-        this.jobRepository = jobRepository;
-        this.uploadService = uploadService;
-        this.credentialService = credentialService;
-        this.quotaTracker = quotaTracker;
-        this.appProperties = appProperties;
-    }
 
     @Scheduled(fixedDelayString = "${app.scheduler.poll-interval-ms}")
     public void pollAndUpload() {
@@ -49,7 +37,7 @@ public class UploadScheduler {
         }
 
         if (!quotaTracker.canUpload()) {
-            log.info("Daily quota exhausted ({}/{}), deferring remaining jobs to next reset",
+            log.info("Daily quota exhausted: used={}, limit={}, deferring remaining jobs",
                     quotaTracker.getUnitsUsedToday(),
                     appProperties.getYoutube().getDailyQuotaLimit());
             deferPendingJobs();
@@ -78,28 +66,30 @@ public class UploadScheduler {
             job.setYoutubeId(youtubeId);
             job.setUploadedAt(Instant.now());
             quotaTracker.recordUpload();
-            log.info("Job {} uploaded successfully. YouTube ID: {}", job.getId(), youtubeId);
+            log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
+                    job.getId(), youtubeId, job.getTitle());
         } catch (UploadException e) {
-            log.error("Upload failed for job {} (permanent={})", job.getId(), e.isPermanent(), e);
+            log.error("Upload failed: jobId={}, permanent={}, error={}",
+                    job.getId(), e.isPermanent(), e.getMessage(), e);
             job.setErrorMessage(e.getMessage());
             if (e.isPermanent()) {
                 job.setStatus(UploadStatus.FAILED);
-                log.warn("Job {} permanently failed: {}", job.getId(), e.getMessage());
+                log.warn("Job permanently failed: jobId={}, error={}", job.getId(), e.getMessage());
             } else {
                 int maxRetries = appProperties.getScheduler().getMaxRetries();
                 if (job.getRetryCount() < maxRetries) {
                     job.setRetryCount(job.getRetryCount() + 1);
                     job.setStatus(UploadStatus.PENDING);
                     job.setScheduledAt(Instant.now().plus(backoffDelay(job.getRetryCount())));
-                    log.info("Job {} will be retried ({}/{}) after {} delay",
+                    log.info("Job scheduled for retry: jobId={}, attempt={}/{}, delay={}",
                             job.getId(), job.getRetryCount(), maxRetries, backoffDelay(job.getRetryCount()));
                 } else {
                     job.setStatus(UploadStatus.FAILED);
-                    log.warn("Job {} permanently failed after {} retries", job.getId(), maxRetries);
+                    log.warn("Job failed after max retries: jobId={}, retries={}", job.getId(), maxRetries);
                 }
             }
         } catch (Exception e) {
-            log.error("Unexpected error for job {}", job.getId(), e);
+            log.error("Unexpected error: jobId={}, error={}", job.getId(), e.getMessage(), e);
             job.setErrorMessage(e.getMessage());
             job.setStatus(UploadStatus.FAILED);
         }
@@ -118,7 +108,7 @@ public class UploadScheduler {
             job.setScheduledAt(nextReset);
             jobRepository.save(job);
         }
-        log.info("Deferred {} pending jobs to next quota reset at {}", pendingJobs.size(), nextReset);
+        log.info("Jobs deferred to next quota reset: count={}, nextReset={}", pendingJobs.size(), nextReset);
     }
 
     private Duration backoffDelay(int retryCount) {

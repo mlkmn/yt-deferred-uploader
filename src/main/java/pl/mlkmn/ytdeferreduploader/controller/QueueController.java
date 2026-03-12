@@ -1,5 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.controller;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,14 +18,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Controller
+@RequiredArgsConstructor
 public class QueueController {
 
     private final UploadJobRepository uploadJobRepository;
-
-    public QueueController(UploadJobRepository uploadJobRepository) {
-        this.uploadJobRepository = uploadJobRepository;
-    }
 
     @GetMapping("/")
     public String root() {
@@ -59,6 +59,7 @@ public class QueueController {
         } else {
             job.setStatus(UploadStatus.CANCELLED);
             uploadJobRepository.save(job);
+            log.info("Job cancelled: jobId={}, title='{}'", id, job.getTitle());
             redirectAttributes.addFlashAttribute("success",
                     "Job #" + id + " cancelled");
         }
@@ -74,11 +75,13 @@ public class QueueController {
             redirectAttributes.addFlashAttribute("error",
                     "Only FAILED or CANCELLED jobs can be retried (current: " + job.getStatus() + ")");
         } else {
+            UploadStatus previousStatus = job.getStatus();
             job.setStatus(UploadStatus.PENDING);
             job.setRetryCount(0);
             job.setErrorMessage(null);
             job.setScheduledAt(Instant.now());
             uploadJobRepository.save(job);
+            log.info("Job retried: jobId={}, previousStatus={}", id, previousStatus);
             redirectAttributes.addFlashAttribute("success", "Job #" + id + " queued for retry");
         }
         return "redirect:/queue";
@@ -93,6 +96,7 @@ public class QueueController {
             redirectAttributes.addFlashAttribute("error", "Cannot delete a job that is currently uploading");
         } else {
             uploadJobRepository.delete(job);
+            log.info("Job deleted: jobId={}, title='{}', status={}", id, job.getTitle(), job.getStatus());
             redirectAttributes.addFlashAttribute("success", "Job #" + id + " deleted");
         }
         return "redirect:/queue";

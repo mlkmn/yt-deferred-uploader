@@ -1,5 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.model.AppSetting;
 import pl.mlkmn.ytdeferreduploader.repository.AppSettingRepository;
@@ -7,6 +8,7 @@ import pl.mlkmn.ytdeferreduploader.repository.AppSettingRepository;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class SettingsService {
 
     public static final String KEY_DEFAULT_DESCRIPTION = "default_description";
@@ -18,10 +20,6 @@ public class SettingsService {
     public static final String KEY_OAUTH_TOKEN_EXPIRY = "oauth_token_expiry_seconds";
 
     private final AppSettingRepository appSettingRepository;
-
-    public SettingsService(AppSettingRepository appSettingRepository) {
-        this.appSettingRepository = appSettingRepository;
-    }
 
     public Optional<String> get(String key) {
         return appSettingRepository.findById(key).map(AppSetting::getSettingValue);

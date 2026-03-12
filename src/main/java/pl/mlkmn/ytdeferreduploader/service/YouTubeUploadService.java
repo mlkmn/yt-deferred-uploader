@@ -10,8 +10,8 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Video;
 import com.google.api.services.youtube.model.VideoSnippet;
 import com.google.api.services.youtube.model.VideoStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 
@@ -25,10 +25,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class YouTubeUploadService {
 
-    private static final Logger log = LoggerFactory.getLogger(YouTubeUploadService.class);
     private static final String APPLICATION_NAME = "yt-deferred-uploader";
     private static final Set<Integer> PERMANENT_HTTP_CODES = Set.of(
             400, // Bad request (invalid metadata, unsupported format)
@@ -40,14 +41,6 @@ public class YouTubeUploadService {
     private final YouTubeCredentialService credentialService;
     private final NetHttpTransport httpTransport;
     private final GsonFactory jsonFactory;
-
-    public YouTubeUploadService(YouTubeCredentialService credentialService,
-                                NetHttpTransport httpTransport,
-                                GsonFactory jsonFactory) {
-        this.credentialService = credentialService;
-        this.httpTransport = httpTransport;
-        this.jsonFactory = jsonFactory;
-    }
 
     public String upload(UploadJob job) {
         Credential credential = credentialService.getCredential()
@@ -94,11 +87,12 @@ public class YouTubeUploadService {
                 insert.getMediaHttpUploader().setDirectUploadEnabled(false);
                 insert.getMediaHttpUploader().setChunkSize(10 * 1024 * 1024); // 10 MB chunks
 
-                log.info("Starting YouTube upload for job {}: '{}'", job.getId(), job.getTitle());
+                log.info("YouTube upload starting: jobId={}, title='{}', fileSize={} bytes",
+                        job.getId(), job.getTitle(), job.getFileSizeBytes());
                 Video uploadedVideo = insert.execute();
 
                 String youtubeId = uploadedVideo.getId();
-                log.info("Upload complete for job {}. YouTube ID: {}", job.getId(), youtubeId);
+                log.info("YouTube upload complete: jobId={}, youtubeId={}", job.getId(), youtubeId);
                 return youtubeId;
             }
         } catch (GoogleJsonResponseException e) {

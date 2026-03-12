@@ -9,34 +9,25 @@ import com.google.api.client.auth.oauth2.TokenResponse;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 
 import java.io.IOException;
 import java.util.Optional;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class YouTubeCredentialService {
 
-    private static final Logger log = LoggerFactory.getLogger(YouTubeCredentialService.class);
     private static final String TOKEN_SERVER_URL = "https://oauth2.googleapis.com/token";
 
     private final SettingsService settingsService;
     private final NetHttpTransport httpTransport;
     private final GsonFactory jsonFactory;
     private final AppProperties appProperties;
-
-    public YouTubeCredentialService(SettingsService settingsService,
-                                    NetHttpTransport httpTransport,
-                                    GsonFactory jsonFactory,
-                                    AppProperties appProperties) {
-        this.settingsService = settingsService;
-        this.httpTransport = httpTransport;
-        this.jsonFactory = jsonFactory;
-        this.appProperties = appProperties;
-    }
 
     public Optional<Credential> getCredential() {
         Optional<String> refreshToken = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN);
@@ -86,14 +77,11 @@ public class YouTubeCredentialService {
         return settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
     }
 
+    @Slf4j
+    @RequiredArgsConstructor
     private static class TokenPersistenceListener implements CredentialRefreshListener {
 
-        private static final Logger log = LoggerFactory.getLogger(TokenPersistenceListener.class);
         private final SettingsService settingsService;
-
-        TokenPersistenceListener(SettingsService settingsService) {
-            this.settingsService = settingsService;
-        }
 
         @Override
         public void onTokenResponse(Credential credential, TokenResponse tokenResponse) {

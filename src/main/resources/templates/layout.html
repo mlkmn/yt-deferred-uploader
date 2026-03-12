@@ -18,6 +18,9 @@
             <a class="nav-link" th:href="@{/queue}" th:classappend="${#strings.equals(activePage,'queue')} ? 'active'">Queue</a>
             <a class="nav-link" th:href="@{/settings}" th:classappend="${#strings.equals(activePage,'settings')} ? 'active'">Settings</a>
         </div>
+        <form th:action="@{/logout}" method="post" class="d-flex mb-0">
+            <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
+        </form>
     </div>
 </nav>
 <div class="container" th:insert="~{__${view}__ :: content}"></div>

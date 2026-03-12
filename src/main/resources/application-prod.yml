@@ -1,0 +1,11 @@
+logging:
+  structured:
+    format:
+      console: logstash
+  level:
+    pl.mlkmn.ytdeferreduploader: DEBUG
+
+spring:
+  h2:
+    console:
+      enabled: false

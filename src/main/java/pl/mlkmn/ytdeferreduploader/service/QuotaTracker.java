@@ -1,7 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.QuotaLog;
@@ -10,18 +10,13 @@ import pl.mlkmn.ytdeferreduploader.repository.QuotaLogRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class QuotaTracker {
-
-    private static final Logger log = LoggerFactory.getLogger(QuotaTracker.class);
 
     private final QuotaLogRepository quotaLogRepository;
     private final AppProperties appProperties;
-
-    public QuotaTracker(QuotaLogRepository quotaLogRepository, AppProperties appProperties) {
-        this.quotaLogRepository = quotaLogRepository;
-        this.appProperties = appProperties;
-    }
 
     public int getUnitsUsedToday() {
         LocalDate today = todayInQuotaZone();
@@ -48,7 +43,9 @@ public class QuotaTracker {
                 .orElse(new QuotaLog(today));
         quotaLog.setUnitsUsed(quotaLog.getUnitsUsed() + units);
         quotaLogRepository.save(quotaLog);
-        log.info("Recorded {} quota units for {}. Total used today: {}", units, today, quotaLog.getUnitsUsed());
+        int remaining = appProperties.getYoutube().getDailyQuotaLimit() - quotaLog.getUnitsUsed();
+        log.info("Quota usage recorded: units={}, date={}, totalUsed={}, remaining={}",
+                units, today, quotaLog.getUnitsUsed(), remaining);
     }
 
     public void recordUpload() {

@@ -2,8 +2,8 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,22 +13,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 
+@Slf4j
 @Controller
+@RequiredArgsConstructor
 public class SettingsController {
-
-    private static final Logger log = LoggerFactory.getLogger(SettingsController.class);
 
     private final SettingsService settingsService;
     private final GoogleAuthorizationCodeFlow authFlow;
     private final AppProperties appProperties;
-
-    public SettingsController(SettingsService settingsService,
-                              GoogleAuthorizationCodeFlow authFlow,
-                              AppProperties appProperties) {
-        this.settingsService = settingsService;
-        this.authFlow = authFlow;
-        this.appProperties = appProperties;
-    }
 
     @GetMapping("/settings")
     public String showSettings(Model model) {

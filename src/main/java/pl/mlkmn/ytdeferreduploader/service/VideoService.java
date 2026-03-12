@@ -1,8 +1,11 @@
 package pl.mlkmn.ytdeferreduploader.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
@@ -15,7 +18,9 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class VideoService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
@@ -29,11 +34,6 @@ public class VideoService {
 
     private final UploadJobRepository uploadJobRepository;
     private final AppProperties appProperties;
-
-    public VideoService(UploadJobRepository uploadJobRepository, AppProperties appProperties) {
-        this.uploadJobRepository = uploadJobRepository;
-        this.appProperties = appProperties;
-    }
 
     public UploadJob handleUpload(MultipartFile file, String title, String description,
                                   String tags, String privacyStatus) throws IOException {
@@ -51,21 +51,25 @@ public class VideoService {
         Path targetPath = uploadDir.resolve(storedFilename);
 
         file.transferTo(targetPath);
+        log.info("File saved: path={}, size={} bytes, originalName={}",
+                targetPath, file.getSize(), originalFilename);
 
         UploadJob job = new UploadJob();
         job.setTitle(title);
         job.setDescription(description);
         job.setTags(tags);
         if (privacyStatus != null && !privacyStatus.isBlank()) {
-            job.setPrivacyStatus(
-                    pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(privacyStatus.toUpperCase()));
+            job.setPrivacyStatus(PrivacyStatus.valueOf(privacyStatus.toUpperCase()));
         }
         job.setFilePath(targetPath.toString());
         job.setFileSizeBytes(file.getSize());
         job.setStatus(UploadStatus.PENDING);
         job.setScheduledAt(Instant.now());
 
-        return uploadJobRepository.save(job);
+        UploadJob saved = uploadJobRepository.save(job);
+        log.info("Upload job created: jobId={}, title='{}', status={}, privacy={}",
+                saved.getId(), saved.getTitle(), saved.getStatus(), saved.getPrivacyStatus());
+        return saved;
     }
 
     private void validateFile(MultipartFile file) {

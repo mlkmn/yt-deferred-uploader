@@ -1,49 +1,25 @@
 package pl.mlkmn.ytdeferreduploader.config;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
 @ConfigurationProperties(prefix = "app")
+@Getter
+@Setter
 public class AppProperties {
 
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
     private YouTube youtube = new YouTube();
     private Scheduler scheduler = new Scheduler();
+    private Admin admin = new Admin();
+    private Cleanup cleanup = new Cleanup();
 
-    public String getUploadDir() {
-        return uploadDir;
-    }
-
-    public void setUploadDir(String uploadDir) {
-        this.uploadDir = uploadDir;
-    }
-
-    public int getMaxFileSizeMb() {
-        return maxFileSizeMb;
-    }
-
-    public void setMaxFileSizeMb(int maxFileSizeMb) {
-        this.maxFileSizeMb = maxFileSizeMb;
-    }
-
-    public YouTube getYoutube() {
-        return youtube;
-    }
-
-    public void setYoutube(YouTube youtube) {
-        this.youtube = youtube;
-    }
-
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
-    public void setScheduler(Scheduler scheduler) {
-        this.scheduler = scheduler;
-    }
-
+    @Getter
+    @Setter
     public static class YouTube {
         private String clientId = "";
         private String clientSecret = "";
@@ -51,74 +27,27 @@ public class AppProperties {
         private int dailyQuotaLimit = 10000;
         private int uploadCostUnits = 1600;
         private String quotaResetTimezone = "Europe/Warsaw";
-
-        public String getClientId() {
-            return clientId;
-        }
-
-        public void setClientId(String clientId) {
-            this.clientId = clientId;
-        }
-
-        public String getClientSecret() {
-            return clientSecret;
-        }
-
-        public void setClientSecret(String clientSecret) {
-            this.clientSecret = clientSecret;
-        }
-
-        public String getRedirectUri() {
-            return redirectUri;
-        }
-
-        public void setRedirectUri(String redirectUri) {
-            this.redirectUri = redirectUri;
-        }
-
-        public int getDailyQuotaLimit() {
-            return dailyQuotaLimit;
-        }
-
-        public void setDailyQuotaLimit(int dailyQuotaLimit) {
-            this.dailyQuotaLimit = dailyQuotaLimit;
-        }
-
-        public int getUploadCostUnits() {
-            return uploadCostUnits;
-        }
-
-        public void setUploadCostUnits(int uploadCostUnits) {
-            this.uploadCostUnits = uploadCostUnits;
-        }
-
-        public String getQuotaResetTimezone() {
-            return quotaResetTimezone;
-        }
-
-        public void setQuotaResetTimezone(String quotaResetTimezone) {
-            this.quotaResetTimezone = quotaResetTimezone;
-        }
     }
 
+    @Getter
+    @Setter
     public static class Scheduler {
         private long pollIntervalMs = 300000;
         private int maxRetries = 3;
+    }
 
-        public long getPollIntervalMs() {
-            return pollIntervalMs;
-        }
+    @Getter
+    @Setter
+    public static class Admin {
+        private String username = "admin";
+        private String password = "admin";
+    }
 
-        public void setPollIntervalMs(long pollIntervalMs) {
-            this.pollIntervalMs = pollIntervalMs;
-        }
-
-        public int getMaxRetries() {
-            return maxRetries;
-        }
-
-        public void setMaxRetries(int maxRetries) {
-            this.maxRetries = maxRetries;
-        }
+    @Getter
+    @Setter
+    public static class Cleanup {
+        private boolean enabled = true;
+        private long retentionHours = 24;
+        private String cron = "0 0 * * * *"; // every hour
     }
 }

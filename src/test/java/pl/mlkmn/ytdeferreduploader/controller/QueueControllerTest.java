@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
@@ -19,12 +20,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = "ADMIN")
 class QueueControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -44,7 +47,7 @@ class QueueControllerTest {
     void cancel_pendingJob_succeeds() throws Exception {
         UploadJob job = createJob(UploadStatus.PENDING);
 
-        mockMvc.perform(post("/queue/{id}/cancel", job.getId()))
+        mockMvc.perform(post("/queue/{id}/cancel", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("success"));
 
@@ -55,7 +58,7 @@ class QueueControllerTest {
     void cancel_nonPendingJob_fails() throws Exception {
         UploadJob job = createJob(UploadStatus.COMPLETED);
 
-        mockMvc.perform(post("/queue/{id}/cancel", job.getId()))
+        mockMvc.perform(post("/queue/{id}/cancel", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
 
@@ -64,7 +67,7 @@ class QueueControllerTest {
 
     @Test
     void cancel_nonExistentJob_showsError() throws Exception {
-        mockMvc.perform(post("/queue/{id}/cancel", 999L))
+        mockMvc.perform(post("/queue/{id}/cancel", 999L).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
     }
@@ -78,7 +81,7 @@ class QueueControllerTest {
         job.setErrorMessage("some error");
         jobRepository.save(job);
 
-        mockMvc.perform(post("/queue/{id}/retry", job.getId()))
+        mockMvc.perform(post("/queue/{id}/retry", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("success"));
 
@@ -93,7 +96,7 @@ class QueueControllerTest {
     void retry_cancelledJob_resetsToPending() throws Exception {
         UploadJob job = createJob(UploadStatus.CANCELLED);
 
-        mockMvc.perform(post("/queue/{id}/retry", job.getId()))
+        mockMvc.perform(post("/queue/{id}/retry", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("success"));
 
@@ -104,7 +107,7 @@ class QueueControllerTest {
     void retry_pendingJob_fails() throws Exception {
         UploadJob job = createJob(UploadStatus.PENDING);
 
-        mockMvc.perform(post("/queue/{id}/retry", job.getId()))
+        mockMvc.perform(post("/queue/{id}/retry", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
 
@@ -113,7 +116,7 @@ class QueueControllerTest {
 
     @Test
     void retry_nonExistentJob_showsError() throws Exception {
-        mockMvc.perform(post("/queue/{id}/retry", 999L))
+        mockMvc.perform(post("/queue/{id}/retry", 999L).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
     }
@@ -124,7 +127,7 @@ class QueueControllerTest {
     void delete_completedJob_removesFromDb() throws Exception {
         UploadJob job = createJob(UploadStatus.COMPLETED);
 
-        mockMvc.perform(post("/queue/{id}/delete", job.getId()))
+        mockMvc.perform(post("/queue/{id}/delete", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("success"));
 
@@ -135,7 +138,7 @@ class QueueControllerTest {
     void delete_pendingJob_removesFromDb() throws Exception {
         UploadJob job = createJob(UploadStatus.PENDING);
 
-        mockMvc.perform(post("/queue/{id}/delete", job.getId()))
+        mockMvc.perform(post("/queue/{id}/delete", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("success"));
 
@@ -146,7 +149,7 @@ class QueueControllerTest {
     void delete_uploadingJob_blocked() throws Exception {
         UploadJob job = createJob(UploadStatus.UPLOADING);
 
-        mockMvc.perform(post("/queue/{id}/delete", job.getId()))
+        mockMvc.perform(post("/queue/{id}/delete", job.getId()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
 
@@ -155,7 +158,7 @@ class QueueControllerTest {
 
     @Test
     void delete_nonExistentJob_showsError() throws Exception {
-        mockMvc.perform(post("/queue/{id}/delete", 999L))
+        mockMvc.perform(post("/queue/{id}/delete", 999L).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("error"));
     }
@@ -173,7 +176,8 @@ class QueueControllerTest {
 
         mockMvc.perform(post("/queue/reorder")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+                        .content(body)
+                        .with(csrf()))
                 .andExpect(status().isOk());
 
         assertEquals(1, jobRepository.findById(job1.getId()).orElseThrow().getSortOrder());

@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+.vscode/
+.claude/
+uploads/
+data/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db

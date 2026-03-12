@@ -195,7 +195,7 @@ spring:
 - [ ] Google OAuth2 flow for YouTube account linking
 - [ ] Token storage and automatic refresh
 - [ ] YouTubeUploadService — resumable upload via Data API v3
-- [ ] QuotaTracker — daily unit accounting with midnight-PT reset
+- [ ] QuotaTracker — daily unit accounting with midnight reset
 - [ ] UploadScheduler — poll PENDING jobs, check quota, upload or defer
 - [ ] Job status updates (real-time via HTMX polling or SSE)
 
@@ -208,7 +208,6 @@ spring:
 - [ ] Queue reordering (drag-and-drop priority)
 
 ### Phase 4 — Production Hardening
-- [ ] Switch to PostgreSQL (add profile-based datasource config)
 - [ ] Dockerize (multi-stage Dockerfile)
 - [ ] Add basic authentication (Spring Security with a single admin user)
 - [ ] Structured logging (upload events, quota state, errors)
