@@ -113,7 +113,7 @@ class VideoServiceTest {
     }
 
     @Test
-    void validateFile_allowedExtensions_accepted() throws IOException {
+    void validateFile_allowedExtensions_accepted() {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         for (String ext : new String[]{".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"}) {
@@ -124,7 +124,7 @@ class VideoServiceTest {
     }
 
     @Test
-    void validateFile_caseInsensitiveExtension_accepted() throws IOException {
+    void validateFile_caseInsensitiveExtension_accepted() {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         MockMultipartFile file = new MockMultipartFile(

@@ -182,7 +182,7 @@ class QueueControllerTest {
     }
 
     @Test
-    void reorder_schedulerRespectsOrder() throws Exception {
+    void reorder_schedulerRespectsOrder() {
         UploadJob job1 = createJob(UploadStatus.PENDING);
         UploadJob job2 = createJob(UploadStatus.PENDING);
 
