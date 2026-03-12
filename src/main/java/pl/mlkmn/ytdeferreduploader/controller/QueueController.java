@@ -26,8 +26,20 @@ public class QueueController {
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
-        model.addAttribute("jobs", uploadJobRepository.findAllByOrderByCreatedAtDesc());
+        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        model.addAttribute("jobs", jobs);
+        model.addAttribute("hasActiveJobs", jobs.stream()
+                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
         return "queue";
+    }
+
+    @GetMapping("/queue/table")
+    public String queueTableFragment(Model model) {
+        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        model.addAttribute("jobs", jobs);
+        model.addAttribute("hasActiveJobs", jobs.stream()
+                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        return "queue :: jobTable";
     }
 
     @PostMapping("/queue/{id}/cancel")
