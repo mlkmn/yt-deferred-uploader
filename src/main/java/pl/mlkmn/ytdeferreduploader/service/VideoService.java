@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
@@ -58,6 +59,7 @@ public class VideoService {
         job.setFilePath(targetPath.toString());
         job.setFileSizeBytes(file.getSize());
         job.setStatus(UploadStatus.PENDING);
+        job.setScheduledAt(Instant.now());
 
         return uploadJobRepository.save(job);
     }

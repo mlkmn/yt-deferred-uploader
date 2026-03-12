@@ -9,8 +9,12 @@ app:
     upload-cost-units: 1600
     quota-reset-timezone: Europe/Warsaw
   scheduler:
-    poll-interval-ms: 300000
+    poll-interval-ms: 30000
     max-retries: 3
+
+logging:
+  level:
+    pl.mlkmn.ytdeferreduploader: DEBUG
 
 spring:
   servlet:
