@@ -83,7 +83,6 @@ class UploadSchedulerIntegrationTest {
     @Test
     void quotaExhausted_marksExhaustedAndDefersJobs() {
         UploadJob job = createAndSaveJob();
-        UploadJob job2 = createAndSaveJob();
         when(uploadService.upload(any()))
                 .thenThrow(new UploadException("Quota exceeded", null, false, true));
 
