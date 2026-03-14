@@ -14,12 +14,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -37,6 +39,20 @@ public class VideoService {
 
     private static final DateTimeFormatter TITLE_FORMAT =
             DateTimeFormatter.ofPattern("dd-MM-yyyy_HHmmss");
+
+    // Matches date-time patterns commonly found in video filenames from phones and apps:
+    //   VID_20260314_153022.mp4          (Android default)
+    //   20260314_153022.mp4              (Android, no prefix)
+    //   2026-03-14 15.30.22.mp4          (Samsung)
+    //   video_2026-03-14_15-30-22.mp4    (Telegram)
+    //   Screen Recording 2026-03-14 at 15.30.22.mov  (iOS)
+    //
+    // Captures 6 groups: yyyy, MM, dd, HH, mm, ss
+    // Group 1-3 (date): digits separated by optional '-' or '_'
+    // Group 4-6 (time): digits separated by optional '.', '_', or '-'
+    // Date and time are separated by whitespace, '_', '-', or ' at '
+    private static final Pattern FILENAME_DATE_PATTERN =
+            Pattern.compile("(\\d{4})[\\-_]?(\\d{2})[\\-_]?(\\d{2})[\\s_\\-]+(?:at\\s)?(\\d{2})[._\\-]?(\\d{2})[._\\-]?(\\d{2})");
 
     private final UploadJobRepository uploadJobRepository;
     private final AppProperties appProperties;
@@ -61,7 +77,7 @@ public class VideoService {
         log.info("File saved: path={}, size={} bytes, originalName={}",
                 targetPath, file.getSize(), originalFilename);
 
-        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(fileLastModified);
+        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(originalFilename, fileLastModified);
 
         UploadJob job = new UploadJob();
         job.setTitle(resolvedTitle);
@@ -84,7 +100,25 @@ public class VideoService {
         return saved;
     }
 
-    private String generateTitle(Long fileLastModified) {
+    private String generateTitle(String originalFilename, Long fileLastModified) {
+        if (originalFilename != null) {
+            Matcher matcher = FILENAME_DATE_PATTERN.matcher(originalFilename);
+            if (matcher.find()) {
+                try {
+                    LocalDateTime dateTime = LocalDateTime.of(
+                            Integer.parseInt(matcher.group(1)),  // year
+                            Integer.parseInt(matcher.group(2)),  // month
+                            Integer.parseInt(matcher.group(3)),  // day
+                            Integer.parseInt(matcher.group(4)),  // hour
+                            Integer.parseInt(matcher.group(5)),  // minute
+                            Integer.parseInt(matcher.group(6))); // second
+                    return TITLE_FORMAT.format(dateTime);
+                } catch (Exception e) {
+                    log.warn("Matched date pattern in filename '{}' but could not parse: {}", originalFilename, e.getMessage());
+                }
+            }
+        }
+
         Instant timestamp = (fileLastModified != null)
                 ? Instant.ofEpochMilli(fileLastModified)
                 : Instant.now();

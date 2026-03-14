@@ -131,4 +131,40 @@ class VideoServiceTest {
                 "file", "video.MP4", "video/mp4", new byte[]{1});
         assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null, null, null));
     }
+
+    @Test
+    void generateTitle_androidFilename_extractsDate() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "VID_20260314_153022.mp4", "video/mp4", new byte[]{1});
+
+        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+        assertEquals("14-03-2026_153022", result.getTitle());
+    }
+
+    @Test
+    void generateTitle_telegramFilename_extractsDate() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "video_2026-03-14_15-30-22.mp4", "video/mp4", new byte[]{1});
+
+        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+        assertEquals("14-03-2026_153022", result.getTitle());
+    }
+
+    @Test
+    void generateTitle_noDateInFilename_fallsBackToLastModified() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "random_video.mp4", "video/mp4", new byte[]{1});
+
+        // 2026-01-15T10:30:00Z
+        long lastModified = 1768561800000L;
+        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, lastModified);
+        assertNotNull(result.getTitle());
+        assertFalse(result.getTitle().isBlank());
+    }
 }
