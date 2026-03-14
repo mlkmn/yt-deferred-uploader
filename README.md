@@ -4,7 +4,8 @@ A self-hosted web application that accepts video uploads to a local server and p
 
 ## Features
 
-- **Upload** — Single or bulk file upload with progress indicator and auto-generated titles from file creation dates
+- **Upload** — Single or bulk file upload with progress indicator
+- **Smart title generation** — Auto-generates titles from video recording dates using a multi-step fallback: filename pattern parsing (Android, Samsung, Telegram, iOS) -> MP4 container metadata extraction (via Apache Tika) -> client-provided file modification date -> current time
 - **Queue** — Dashboard showing all jobs with status, drag-and-drop reordering, cancel/retry/delete actions
 - **Scheduler** — Polls pending jobs and uploads to YouTube with exponential backoff retry for transient failures
 - **Quota awareness** — Automatically defers uploads when YouTube returns 429; auto-resets daily
@@ -32,7 +33,9 @@ A self-hosted web application that accepts video uploads to a local server and p
 | Database    | H2 (embedded, file-based)                         |
 | ORM         | Spring Data JPA / Hibernate                       |
 | YouTube API | google-api-services-youtube (Data API v3)         |
+| Metadata    | Apache Tika (video metadata extraction)            |
 | Auth        | Spring Security (single admin user)               |
+| Testing     | JUnit 5, Mockito, JaCoCo (code coverage)           |
 | Build       | Gradle (Kotlin DSL)                               |
 
 ## Prerequisites
@@ -94,6 +97,7 @@ The prod profile enables:
 - Forward headers support (for HTTPS proxies like Railway/nginx)
 - Swagger UI and API docs disabled
 - Logging level set to INFO with structured JSON output
+- File cleanup retention reduced to 1 hour (vs 24 hours in development)
 
 > **Note:** If you enable `ENCRYPTION_KEY` on an existing database, previously stored OAuth tokens will be unreadable. You'll need to disconnect and re-connect your YouTube account.
 
@@ -108,7 +112,7 @@ Key properties in `application.yml` (overridable via environment variables or Sp
 | `app.scheduler.poll-interval-ms`  | `30000`                    | How often the scheduler polls (ms)        |
 | `app.scheduler.max-retries`       | `3`                        | Max retry attempts for transient failures |
 | `app.cleanup.enabled`             | `true`                     | Enable automatic file cleanup             |
-| `app.cleanup.retention-hours`     | `24`                       | Hours to keep files after upload          |
+| `app.cleanup.retention-hours`     | `24` (`1` in prod)         | Hours to keep files after upload          |
 | `app.admin.username`              | `admin`                    | Login username                            |
 | `app.admin.password`              | `admin`                    | Login password                            |
 | `app.youtube.quota-reset-timezone`| `Europe/Warsaw`            | Timezone for daily quota reset            |
