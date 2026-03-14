@@ -201,6 +201,61 @@ class QueueControllerTest {
         assertEquals(job1.getId(), jobs.get(1).getId());
     }
 
+    // --- Delete: file handling edge cases ---
+
+    @Test
+    void delete_jobWithNullFilePath_removesFromDb() throws Exception {
+        UploadJob job = new UploadJob();
+        job.setTitle("No File");
+        job.setPrivacyStatus(PrivacyStatus.PRIVATE);
+        job.setFilePath(null);
+        job.setFileSizeBytes(0L);
+        job.setStatus(UploadStatus.COMPLETED);
+        job.setScheduledAt(Instant.now());
+        job = jobRepository.save(job);
+
+        mockMvc.perform(post("/queue/{id}/delete", job.getId()).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("success"));
+
+        assertTrue(jobRepository.findById(job.getId()).isEmpty());
+    }
+
+    @Test
+    void delete_jobWithNonExistentFile_removesFromDb() throws Exception {
+        UploadJob job = new UploadJob();
+        job.setTitle("Missing File");
+        job.setPrivacyStatus(PrivacyStatus.PRIVATE);
+        job.setFilePath("/tmp/nonexistent_file_12345.mp4");
+        job.setFileSizeBytes(0L);
+        job.setStatus(UploadStatus.COMPLETED);
+        job.setScheduledAt(Instant.now());
+        job = jobRepository.save(job);
+
+        mockMvc.perform(post("/queue/{id}/delete", job.getId()).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("success"));
+
+        assertTrue(jobRepository.findById(job.getId()).isEmpty());
+    }
+
+    // --- Reorder: edge cases ---
+
+    @Test
+    void reorder_withNonExistentIds_skipsUnknown() throws Exception {
+        UploadJob job1 = createJob(UploadStatus.PENDING);
+
+        String body = "[999," + job1.getId() + "]";
+
+        mockMvc.perform(post("/queue/reorder")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body)
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        assertEquals(1, jobRepository.findById(job1.getId()).orElseThrow().getSortOrder());
+    }
+
     private UploadJob createJob(UploadStatus status) {
         UploadJob job = new UploadJob();
         job.setTitle("Test Video");

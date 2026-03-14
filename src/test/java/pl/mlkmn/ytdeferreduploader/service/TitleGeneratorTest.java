@@ -106,4 +106,31 @@ class TitleGeneratorTest {
         assertNotNull(title);
         assertFalse(title.isBlank());
     }
+
+    @Test
+    void invalidDateInFilename_fallsThrough() throws IOException {
+        // Month 99 is invalid — regex matches but parsing should fail gracefully
+        Path file = writeTempFile("VID_20269914_153022.mp4", new byte[]{1});
+
+        // Use a 2024 timestamp so we can distinguish it from the invalid 2026 filename
+        long lastModified = Instant.parse("2024-06-15T10:30:00Z").toEpochMilli();
+        String title = titleGenerator.generate("VID_20269914_153022.mp4", file, lastModified);
+        assertNotNull(title);
+        // Should fall through to lastModified (2024), not use invalid filename date
+        assertTrue(title.contains("2024"), "Should use lastModified fallback, not invalid filename date");
+    }
+
+    @Test
+    void pre2000MetadataDate_ignored() throws IOException {
+        // Create MP4 with a date from 1904 (QuickTime epoch zero)
+        Instant ancientDate = Instant.parse("1904-01-01T00:00:00Z");
+        byte[] mp4Bytes = Mp4TestHelper.createMp4WithCreationDate(ancientDate);
+        Path file = writeTempFile("1000031216.mp4", mp4Bytes);
+
+        long lastModified = 1768561800000L;
+        String title = titleGenerator.generate("1000031216.mp4", file, lastModified);
+        assertNotNull(title);
+        // Should skip metadata (pre-2000) and use lastModified
+        assertFalse(title.contains("1904"));
+    }
 }

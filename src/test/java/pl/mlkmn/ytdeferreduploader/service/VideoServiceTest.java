@@ -110,4 +110,30 @@ class VideoServiceTest {
         assertTrue(result.getFilePath().endsWith(".mov"));
         assertEquals(1L, result.getFileSizeBytes());
     }
+
+    @Test
+    void handleUpload_nullPrivacyAndPlaylist_keepsDefaults() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "test.mp4", "video/mp4", new byte[]{1});
+
+        UploadJob result = videoService.handleUpload(file, "title", null, null, null, null, null);
+
+        assertEquals("PRIVATE", result.getPrivacyStatus().name());
+        assertNull(result.getPlaylistId());
+    }
+
+    @Test
+    void handleUpload_blankPrivacyAndPlaylist_keepsDefaults() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "test.mp4", "video/mp4", new byte[]{1});
+
+        UploadJob result = videoService.handleUpload(file, "title", null, null, "  ", "  ", null);
+
+        assertEquals("PRIVATE", result.getPrivacyStatus().name());
+        assertNull(result.getPlaylistId());
+    }
 }

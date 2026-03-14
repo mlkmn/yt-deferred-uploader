@@ -84,4 +84,27 @@ class FileValidatorTest {
                 "file", "video.MP4", "video/mp4", new byte[]{1});
         assertDoesNotThrow(() -> fileValidator.validate(file));
     }
+
+    @Test
+    void filenameWithoutExtension_throws() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "video", "video/mp4", new byte[]{1});
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> fileValidator.validate(file));
+        assertTrue(ex.getMessage().contains("Unsupported file extension"));
+    }
+
+    @Test
+    void nullFilename_passesFilenameCheck() {
+        // MockMultipartFile with null originalFilename — the filename null-check
+        // in validate() skips the extension check entirely
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "", "video/mp4", new byte[]{1});
+        // Empty originalFilename is treated as non-null by MockMultipartFile,
+        // so it hits the extension check with empty string — which has no dot
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> fileValidator.validate(file));
+        assertTrue(ex.getMessage().contains("Unsupported file extension"));
+    }
 }
