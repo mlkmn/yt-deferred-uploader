@@ -7,6 +7,10 @@ server:
         same-site: lax
       timeout: 30m
 
+app:
+  cleanup:
+    retention-hours: 1
+
 logging:
   structured:
     format:
