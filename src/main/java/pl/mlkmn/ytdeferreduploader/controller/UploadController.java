@@ -39,6 +39,7 @@ public class UploadController {
                                @RequestParam(value = "tags", required = false) String tags,
                                @RequestParam(value = "privacyStatus", required = false) String privacyStatus,
                                @RequestParam(value = "playlistId", required = false) String playlistId,
+                               @RequestParam(value = "fileLastModified", required = false) Long fileLastModified,
                                RedirectAttributes redirectAttributes) {
         var errors = new ArrayList<String>();
         int successCount = 0;
@@ -47,7 +48,7 @@ public class UploadController {
             String fileTitle = (files.length == 1 && title != null && !title.isBlank())
                     ? title : null;
             try {
-                videoService.handleUpload(file, fileTitle, description, tags, privacyStatus, playlistId);
+                videoService.handleUpload(file, fileTitle, description, tags, privacyStatus, playlistId, fileLastModified);
                 successCount++;
             } catch (IllegalArgumentException e) {
                 errors.add(file.getOriginalFilename() + ": " + e.getMessage());

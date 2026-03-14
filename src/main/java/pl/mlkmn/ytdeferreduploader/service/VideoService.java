@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
+
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,7 +42,8 @@ public class VideoService {
     private final AppProperties appProperties;
 
     public UploadJob handleUpload(MultipartFile file, String title, String description,
-                                  String tags, String privacyStatus, String playlistId) throws IOException {
+                                  String tags, String privacyStatus, String playlistId,
+                                  Long fileLastModified) throws IOException {
         validateFile(file);
 
         Path uploadDir = Paths.get(appProperties.getUploadDir()).toAbsolutePath().normalize();
@@ -60,7 +61,7 @@ public class VideoService {
         log.info("File saved: path={}, size={} bytes, originalName={}",
                 targetPath, file.getSize(), originalFilename);
 
-        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(targetPath);
+        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(fileLastModified);
 
         UploadJob job = new UploadJob();
         job.setTitle(resolvedTitle);
@@ -83,15 +84,11 @@ public class VideoService {
         return saved;
     }
 
-    private String generateTitle(Path filePath) {
-        try {
-            BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
-            Instant creationTime = attrs.creationTime().toInstant();
-            return TITLE_FORMAT.format(creationTime.atZone(ZoneId.systemDefault()));
-        } catch (IOException e) {
-            log.warn("Could not read file attributes for title generation, using current time");
-            return TITLE_FORMAT.format(Instant.now().atZone(ZoneId.systemDefault()));
-        }
+    private String generateTitle(Long fileLastModified) {
+        Instant timestamp = (fileLastModified != null)
+                ? Instant.ofEpochMilli(fileLastModified)
+                : Instant.now();
+        return TITLE_FORMAT.format(timestamp.atZone(ZoneId.systemDefault()));
     }
 
     private void validateFile(MultipartFile file) {

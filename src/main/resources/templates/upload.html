@@ -157,6 +157,7 @@
                 progressLabel.textContent = files[0].name;
                 const formData = new FormData();
                 formData.append('file', files[0]);
+                formData.append('fileLastModified', files[0].lastModified);
                 formData.append('title', form.elements['title'].value);
                 formData.append('description', form.elements['description'].value);
                 formData.append('tags', form.elements['tags'].value);
@@ -192,6 +193,7 @@
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('fileLastModified', file.lastModified);
             formData.append('description', form.elements['description'].value);
             formData.append('tags', form.elements['tags'].value);
             formData.append('privacyStatus', form.elements['privacyStatus'].value);
