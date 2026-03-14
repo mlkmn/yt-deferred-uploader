@@ -104,13 +104,26 @@
             return dd + '-' + mm + '-' + yyyy + '_' + hh + mi + ss;
         }
 
+        function isLastModifiedNearNow(file) {
+            return Math.abs(Date.now() - file.lastModified) < 60000;
+        }
+
+        function isMp4(file) {
+            return file.name.toLowerCase().endsWith('.mp4');
+        }
+
         fileInput.addEventListener('change', function() {
             const files = this.files;
             if (files.length === 1) {
                 titleInput.disabled = false;
                 titleHint.textContent = '';
                 if (!titleInput.value) {
-                    titleInput.value = formatFileDate(files[0]);
+                    if (isLastModifiedNearNow(files[0]) && isMp4(files[0])) {
+                        titleInput.value = '';
+                        titleHint.textContent = 'File date looks unreliable — title will be generated from video metadata on the server.';
+                    } else {
+                        titleInput.value = formatFileDate(files[0]);
+                    }
                 }
             } else if (files.length > 1) {
                 titleInput.value = '';

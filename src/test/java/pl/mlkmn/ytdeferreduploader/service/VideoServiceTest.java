@@ -14,6 +14,7 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -166,5 +167,39 @@ class VideoServiceTest {
         UploadJob result = videoService.handleUpload(file, null, null, null, null, null, lastModified);
         assertNotNull(result.getTitle());
         assertFalse(result.getTitle().isBlank());
+    }
+
+    @Test
+    void generateTitle_mp4Metadata_extractsCreationDate() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Instant creationTime = Instant.parse("2025-06-15T14:30:00Z");
+        byte[] mp4Bytes = Mp4TestHelper.createMp4WithCreationDate(creationTime);
+
+        // Use a generic filename (no date pattern) so filename parsing is skipped
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "1000031216.mp4", "video/mp4", mp4Bytes);
+
+        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+        assertNotNull(result.getTitle());
+        // Tika should extract creation date from the mvhd atom
+        assertFalse(result.getTitle().isBlank());
+        assertTrue(result.getTitle().contains("2025"), "Title should contain year from metadata");
+    }
+
+    @Test
+    void generateTitle_filenameDateTakesPriorityOverMetadata() throws IOException {
+        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        // MP4 with metadata date of 2025-06-15
+        Instant creationTime = Instant.parse("2025-06-15T14:30:00Z");
+        byte[] mp4Bytes = Mp4TestHelper.createMp4WithCreationDate(creationTime);
+
+        // Filename has a different date (2026-03-14) — should take priority
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "VID_20260314_153022.mp4", "video/mp4", mp4Bytes);
+
+        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+        assertEquals("14-03-2026_153022", result.getTitle());
     }
 }

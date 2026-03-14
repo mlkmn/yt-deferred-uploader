@@ -10,7 +10,14 @@ import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.sax.BodyContentHandler;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -54,6 +62,9 @@ public class VideoService {
     private static final Pattern FILENAME_DATE_PATTERN =
             Pattern.compile("(\\d{4})[\\-_]?(\\d{2})[\\-_]?(\\d{2})[\\s_\\-]+(?:at\\s)?(\\d{2})[._\\-]?(\\d{2})[._\\-]?(\\d{2})");
 
+    private static final AutoDetectParser TIKA_PARSER = new AutoDetectParser();
+    private static final Instant MIN_VALID_DATE = Instant.parse("2000-01-01T00:00:00Z");
+
     private final UploadJobRepository uploadJobRepository;
     private final AppProperties appProperties;
 
@@ -77,7 +88,7 @@ public class VideoService {
         log.info("File saved: path={}, size={} bytes, originalName={}",
                 targetPath, file.getSize(), originalFilename);
 
-        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(originalFilename, fileLastModified);
+        String resolvedTitle = (title != null && !title.isBlank()) ? title : generateTitle(originalFilename, targetPath, fileLastModified);
 
         UploadJob job = new UploadJob();
         job.setTitle(resolvedTitle);
@@ -100,7 +111,7 @@ public class VideoService {
         return saved;
     }
 
-    private String generateTitle(String originalFilename, Long fileLastModified) {
+    private String generateTitle(String originalFilename, Path filePath, Long fileLastModified) {
         if (originalFilename != null) {
             Matcher matcher = FILENAME_DATE_PATTERN.matcher(originalFilename);
             if (matcher.find()) {
@@ -119,10 +130,35 @@ public class VideoService {
             }
         }
 
+        LocalDateTime metadataDate = extractCreationDateFromMetadata(filePath);
+        if (metadataDate != null) {
+            log.info("Title generated from video metadata creation date: {}", metadataDate);
+            return TITLE_FORMAT.format(metadataDate);
+        }
+
         Instant timestamp = (fileLastModified != null)
                 ? Instant.ofEpochMilli(fileLastModified)
                 : Instant.now();
         return TITLE_FORMAT.format(timestamp.atZone(ZoneId.systemDefault()));
+    }
+
+    private LocalDateTime extractCreationDateFromMetadata(Path filePath) {
+        try (InputStream stream = Files.newInputStream(filePath)) {
+            Metadata metadata = new Metadata();
+            BodyContentHandler handler = new BodyContentHandler(-1);
+            TIKA_PARSER.parse(stream, handler, metadata, new ParseContext());
+
+            Date created = metadata.getDate(TikaCoreProperties.CREATED);
+            if (created == null) {
+                created = metadata.getDate(TikaCoreProperties.MODIFIED);
+            }
+            if (created != null && created.toInstant().isAfter(MIN_VALID_DATE)) {
+                return LocalDateTime.ofInstant(created.toInstant(), ZoneId.systemDefault());
+            }
+        } catch (Exception e) {
+            log.warn("Could not extract metadata from file {}: {}", filePath, e.getMessage());
+        }
+        return null;
     }
 
     private void validateFile(MultipartFile file) {
