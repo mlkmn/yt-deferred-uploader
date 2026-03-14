@@ -14,7 +14,6 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,15 +28,15 @@ class VideoServiceTest {
     @TempDir
     Path tempDir;
 
-    private AppProperties appProperties;
     private VideoService videoService;
 
     @BeforeEach
     void setUp() {
-        appProperties = new AppProperties();
+        AppProperties appProperties = new AppProperties();
         appProperties.setUploadDir(tempDir.toString());
         appProperties.setMaxFileSizeMb(10);
-        videoService = new VideoService(uploadJobRepository, appProperties);
+        videoService = new VideoService(uploadJobRepository, appProperties,
+                new FileValidator(appProperties), new TitleGenerator());
     }
 
     @Test
@@ -63,143 +62,52 @@ class VideoServiceTest {
     }
 
     @Test
-    void validateFile_emptyFile_throws() {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.mp4", "video/mp4", new byte[0]);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        assertTrue(ex.getMessage().contains("empty"));
-    }
-
-    @Test
-    void validateFile_fileTooLarge_throws() {
-        byte[] largeContent = new byte[11 * 1024 * 1024]; // 11 MB, limit is 10
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.mp4", "video/mp4", largeContent);
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        assertTrue(ex.getMessage().contains("exceeds maximum size"));
-    }
-
-    @Test
-    void validateFile_unsupportedContentType_throws() {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.txt", "text/plain", new byte[]{1});
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        assertTrue(ex.getMessage().contains("Unsupported file type"));
-    }
-
-    @Test
-    void validateFile_nullContentType_throws() {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.mp4", null, new byte[]{1});
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        assertTrue(ex.getMessage().contains("Unsupported file type"));
-    }
-
-    @Test
-    void validateFile_unsupportedExtension_throws() {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.exe", "video/mp4", new byte[]{1});
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        assertTrue(ex.getMessage().contains("Unsupported file extension"));
-    }
-
-    @Test
-    void validateFile_allowedExtensions_accepted() {
-        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        for (String ext : new String[]{".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"}) {
-            MockMultipartFile file = new MockMultipartFile(
-                    "file", "video" + ext, "video/mp4", new byte[]{1});
-            assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null, null, null));
-        }
-    }
-
-    @Test
-    void validateFile_caseInsensitiveExtension_accepted() {
-        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "video.MP4", "video/mp4", new byte[]{1});
-        assertDoesNotThrow(() -> videoService.handleUpload(file, "title", null, null, null, null, null));
-    }
-
-    @Test
-    void generateTitle_androidFilename_extractsDate() throws IOException {
+    void handleUpload_noTitle_generatesFromFilename() throws IOException {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "VID_20260314_153022.mp4", "video/mp4", new byte[]{1});
 
         UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+
         assertEquals("14-03-2026_153022", result.getTitle());
     }
 
     @Test
-    void generateTitle_telegramFilename_extractsDate() throws IOException {
+    void handleUpload_blankTitle_generatesFromFilename() throws IOException {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         MockMultipartFile file = new MockMultipartFile(
-                "file", "video_2026-03-14_15-30-22.mp4", "video/mp4", new byte[]{1});
+                "file", "VID_20260314_153022.mp4", "video/mp4", new byte[]{1});
 
-        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
+        UploadJob result = videoService.handleUpload(file, "  ", null, null, null, null, null);
+
         assertEquals("14-03-2026_153022", result.getTitle());
     }
 
     @Test
-    void generateTitle_noDateInFilename_fallsBackToLastModified() throws IOException {
+    void handleUpload_setsPrivacyAndPlaylist() throws IOException {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         MockMultipartFile file = new MockMultipartFile(
-                "file", "random_video.mp4", "video/mp4", new byte[]{1});
+                "file", "test.mp4", "video/mp4", new byte[]{1});
 
-        // 2026-01-15T10:30:00Z
-        long lastModified = 1768561800000L;
-        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, lastModified);
-        assertNotNull(result.getTitle());
-        assertFalse(result.getTitle().isBlank());
+        UploadJob result = videoService.handleUpload(file, "title", null, null, "UNLISTED", "PL123", null);
+
+        assertEquals("UNLISTED", result.getPrivacyStatus().name());
+        assertEquals("PL123", result.getPlaylistId());
     }
 
     @Test
-    void generateTitle_mp4Metadata_extractsCreationDate() throws IOException {
+    void handleUpload_storesFileWithCorrectExtension() throws IOException {
         when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        Instant creationTime = Instant.parse("2025-06-15T14:30:00Z");
-        byte[] mp4Bytes = Mp4TestHelper.createMp4WithCreationDate(creationTime);
-
-        // Use a generic filename (no date pattern) so filename parsing is skipped
         MockMultipartFile file = new MockMultipartFile(
-                "file", "1000031216.mp4", "video/mp4", mp4Bytes);
+                "file", "myvideo.mov", "video/quicktime", new byte[]{1});
 
-        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
-        assertNotNull(result.getTitle());
-        // Tika should extract creation date from the mvhd atom
-        assertFalse(result.getTitle().isBlank());
-        assertTrue(result.getTitle().contains("2025"), "Title should contain year from metadata");
-    }
+        UploadJob result = videoService.handleUpload(file, "title", null, null, null, null, null);
 
-    @Test
-    void generateTitle_filenameDateTakesPriorityOverMetadata() throws IOException {
-        when(uploadJobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        // MP4 with metadata date of 2025-06-15
-        Instant creationTime = Instant.parse("2025-06-15T14:30:00Z");
-        byte[] mp4Bytes = Mp4TestHelper.createMp4WithCreationDate(creationTime);
-
-        // Filename has a different date (2026-03-14) — should take priority
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "VID_20260314_153022.mp4", "video/mp4", mp4Bytes);
-
-        UploadJob result = videoService.handleUpload(file, null, null, null, null, null, null);
-        assertEquals("14-03-2026_153022", result.getTitle());
+        assertTrue(result.getFilePath().endsWith(".mov"));
+        assertEquals(1L, result.getFileSizeBytes());
     }
 }
