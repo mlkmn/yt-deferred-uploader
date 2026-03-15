@@ -101,6 +101,33 @@ The prod profile enables:
 
 > **Note:** If you enable `ENCRYPTION_KEY` on an existing database, previously stored OAuth tokens will be unreadable. You'll need to disconnect and re-connect your YouTube account.
 
+### Railway
+
+The repository includes a `Dockerfile.railway` optimized for Railway deployment. To set up:
+
+1. Create a new Railway service from your GitHub repo
+2. In the service settings, set the **Dockerfile path** to `Dockerfile.railway`
+3. Add a **volume** mounted at `/app/storage` (persists the H2 database and uploaded files)
+4. Set the following **environment variables**:
+
+| Variable | Required | Description |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | Yes | Set to `prod` |
+| `YOUTUBE_CLIENT_ID` | Yes | Google OAuth client ID |
+| `YOUTUBE_CLIENT_SECRET` | Yes | Google OAuth client secret |
+| `ADMIN_USERNAME` | Yes | Login username |
+| `ADMIN_PASSWORD` | Yes | Login password |
+| `APP_YOUTUBE_REDIRECT_URI` | Yes | `https://<your-app>.up.railway.app/settings/oauth/callback` |
+| `ENCRYPTION_KEY` | No | AES-256-GCM key for settings encryption |
+
+Make sure the redirect URI also matches the one configured in your Google Cloud Console OAuth credentials.
+
+To adjust logging verbosity at runtime, add an environment variable without redeploying:
+
+```
+LOGGING_LEVEL_PL_MLKMN_YTDEFERREDUPLOADER=DEBUG
+```
+
 ## Configuration
 
 Key properties in `application.yml` (overridable via environment variables or Spring profiles):
