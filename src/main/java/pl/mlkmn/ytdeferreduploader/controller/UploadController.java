@@ -29,6 +29,12 @@ public class UploadController {
         model.addAttribute("playlists", playlistService.getUserPlaylists());
         model.addAttribute("defaultPlaylist",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+        model.addAttribute("defaultPrivacy",
+                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
+        model.addAttribute("defaultDescription",
+                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
+        model.addAttribute("defaultTags",
+                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_TAGS, ""));
         return "upload";
     }
 

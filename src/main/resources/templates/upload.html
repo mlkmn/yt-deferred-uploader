@@ -40,21 +40,21 @@
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
                             <textarea class="form-control" id="description" name="description"
-                                      rows="3"></textarea>
+                                      rows="3" th:text="${defaultDescription}"></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label for="tags" class="form-label">Tags (comma-separated)</label>
                             <input type="text" class="form-control" id="tags" name="tags"
-                                   maxlength="500">
+                                   maxlength="500" th:value="${defaultTags}">
                         </div>
 
                         <div class="mb-3">
                             <label for="privacyStatus" class="form-label">Privacy</label>
                             <select class="form-select" id="privacyStatus" name="privacyStatus">
-                                <option value="PRIVATE">Private</option>
-                                <option value="UNLISTED">Unlisted</option>
-                                <option value="PUBLIC">Public</option>
+                                <option value="PRIVATE" th:selected="${defaultPrivacy == 'PRIVATE'}">Private</option>
+                                <option value="UNLISTED" th:selected="${defaultPrivacy == 'UNLISTED'}">Unlisted</option>
+                                <option value="PUBLIC" th:selected="${defaultPrivacy == 'PUBLIC'}">Public</option>
                             </select>
                         </div>
 
