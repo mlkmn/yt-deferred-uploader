@@ -2,13 +2,11 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
@@ -18,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -35,7 +32,7 @@ public class QueueController {
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderBySortOrderAscCreatedAtDesc();
+        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
@@ -44,7 +41,7 @@ public class QueueController {
 
     @GetMapping("/queue/table")
     public String queueTableFragment(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderBySortOrderAscCreatedAtDesc();
+        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
@@ -121,15 +118,4 @@ public class QueueController {
         }
     }
 
-    @PostMapping("/queue/reorder")
-    public ResponseEntity<Void> reorderQueue(@RequestBody List<Long> jobIds) {
-        for (int i = 0; i < jobIds.size(); i++) {
-            final int order = i;
-            uploadJobRepository.findById(jobIds.get(i)).ifPresent(job -> {
-                job.setSortOrder(order);
-                uploadJobRepository.save(job);
-            });
-        }
-        return ResponseEntity.ok().build();
-    }
 }

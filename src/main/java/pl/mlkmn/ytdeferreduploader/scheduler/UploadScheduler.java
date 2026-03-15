@@ -47,7 +47,7 @@ public class UploadScheduler {
             return;
         }
 
-        var nextJob = jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        var nextJob = jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 UploadStatus.PENDING, Instant.now());
 
         if (nextJob.isEmpty()) {
@@ -168,7 +168,7 @@ public class UploadScheduler {
     }
 
     private void deferPendingJobs() {
-        var pendingJobs = jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING);
+        var pendingJobs = jobRepository.findByStatusOrderByCreatedAtAsc(UploadStatus.PENDING);
         if (pendingJobs.isEmpty()) {
             return;
         }

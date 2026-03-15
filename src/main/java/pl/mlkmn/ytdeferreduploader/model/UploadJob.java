@@ -69,9 +69,6 @@ public class UploadJob {
     @Column(name = "playlist_id", length = 50)
     private String playlistId;
 
-    @Column(name = "sort_order")
-    private int sortOrder = 0;
-
     @Setter(lombok.AccessLevel.NONE)
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

@@ -70,7 +70,7 @@ class UploadSchedulerTest {
     void pollAndUpload_noPendingJobs_doesNothing() {
         when(credentialService.isConnected()).thenReturn(true);
         when(quotaTracker.isExhausted()).thenReturn(false);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.empty());
 
@@ -85,7 +85,7 @@ class UploadSchedulerTest {
         when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job)).thenReturn("yt-abc123");
@@ -104,7 +104,7 @@ class UploadSchedulerTest {
         when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job))
@@ -126,7 +126,7 @@ class UploadSchedulerTest {
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         job.setRetryCount(3); // already at max
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job))
@@ -145,7 +145,7 @@ class UploadSchedulerTest {
         when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job))
@@ -166,7 +166,7 @@ class UploadSchedulerTest {
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         job.setRetryCount(0);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job))
@@ -185,12 +185,12 @@ class UploadSchedulerTest {
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
         UploadJob pendingJob = createJob(2L, UploadStatus.PENDING);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
         when(uploadService.upload(job))
                 .thenThrow(new UploadException("Quota exceeded", null, false, true));
-        when(jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING))
+        when(jobRepository.findByStatusOrderByCreatedAtAsc(UploadStatus.PENDING))
                 .thenReturn(List.of(pendingJob));
         when(jobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -208,7 +208,7 @@ class UploadSchedulerTest {
         when(quotaTracker.isExhausted()).thenReturn(false);
 
         UploadJob job = createJob(1L, UploadStatus.PENDING);
-        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+        when(jobRepository.findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
                 eq(UploadStatus.PENDING), any(Instant.class)))
                 .thenReturn(Optional.of(job));
 

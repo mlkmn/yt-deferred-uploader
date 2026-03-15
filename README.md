@@ -6,7 +6,7 @@ A self-hosted web application that polls a Google Drive folder for videos and pe
 
 - **Google Drive integration** — Upload videos to a Drive folder from any device; the app automatically detects and queues them
 - **Smart title generation** — Auto-generates titles from video recording dates using a multi-step fallback: filename pattern parsing (Android, Samsung, Telegram, WhatsApp, iOS) -> Drive file modification date -> current time
-- **Queue** — Dashboard showing all jobs with status, drag-and-drop reordering, cancel/retry/delete actions
+- **Queue** — Dashboard showing all jobs with status, cancel/retry/delete actions, live updates via HTMX polling
 - **Scheduler** — Polls pending jobs and uploads to YouTube with exponential backoff retry for transient failures
 - **Quota awareness** — Automatically defers uploads when YouTube returns 429; auto-resets daily
 - **Playlists** — Default playlist selection; videos are added to a playlist after upload
@@ -19,7 +19,7 @@ A self-hosted web application that polls a Google Drive folder for videos and pe
 
 - **Login rate limiting** — 5 attempts per IP in a 15-minute window; returns 429 when exceeded
 - **Security headers** — HSTS (1 year, includeSubDomains), X-Frame-Options DENY, X-Content-Type-Options nosniff
-- **CSRF protection** — Enabled on all endpoints including drag-and-drop reorder
+- **CSRF protection** — Enabled on all state-changing endpoints
 - **Encryption at rest** — Optional AES-256-GCM encryption for stored settings (OAuth tokens, etc.)
 - **Production profile** — Secure session cookies, Swagger disabled, structured JSON logging
 
@@ -117,7 +117,6 @@ The prod profile enables:
 - Forward headers support (for HTTPS proxies like Railway/nginx)
 - Swagger UI and API docs disabled
 - Logging level set to INFO with structured JSON output
-- File cleanup retention reduced to 1 hour (vs 24 hours in development)
 
 > **Note:** If you enable `ENCRYPTION_KEY` on an existing database, previously stored OAuth tokens will be unreadable. You'll need to disconnect and re-connect your YouTube account.
 

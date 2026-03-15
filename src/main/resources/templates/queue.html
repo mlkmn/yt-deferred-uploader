@@ -35,7 +35,6 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:2rem"></th>
                         <th>#</th>
                         <th>Title</th>
                         <th>Size</th>
@@ -46,8 +45,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="job : ${jobs}" th:attr="data-id=${job.id}">
-                        <td class="drag-handle" style="cursor:grab">&#x2630;</td>
+                    <tr th:each="job : ${jobs}">
                         <td th:text="${job.id}"></td>
                         <td>
                             <span th:text="${job.title}"></span>
@@ -123,32 +121,8 @@
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
-        function initSortable() {
-            const tbody = document.querySelector('#job-table tbody');
-            if (!tbody) return;
-            Sortable.create(tbody, {
-                handle: '.drag-handle',
-                animation: 150,
-                onEnd: function() {
-                    const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
-                            .map(row => parseInt(row.dataset.id));
-                    const csrfToken = document.querySelector('meta[name="_csrf"]').content;
-                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
-                    fetch('/queue/reorder', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            [csrfHeader]: csrfToken
-                        },
-                        body: JSON.stringify(ids)
-                    });
-                }
-            });
-        }
-
         // Capture initial statuses
         window.jobStatuses = captureStatuses();
-        initSortable();
 
         // After each HTMX swap, detect changes and show toasts, re-init sortable
         document.body.addEventListener('htmx:afterSwap', function(e) {
@@ -165,7 +139,6 @@
                 }
             }
             window.jobStatuses = newStatuses;
-            initSortable();
         });
     </script>
 

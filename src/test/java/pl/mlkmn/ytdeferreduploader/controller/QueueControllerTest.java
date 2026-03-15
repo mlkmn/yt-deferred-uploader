@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -163,44 +162,6 @@ class QueueControllerTest {
                 .andExpect(flash().attributeExists("error"));
     }
 
-    // --- Reorder ---
-
-    @Test
-    void reorder_updatesSortOrder() throws Exception {
-        UploadJob job1 = createJob(UploadStatus.PENDING);
-        UploadJob job2 = createJob(UploadStatus.PENDING);
-        UploadJob job3 = createJob(UploadStatus.PENDING);
-
-        // Reverse order: job3, job1, job2
-        String body = "[" + job3.getId() + "," + job1.getId() + "," + job2.getId() + "]";
-
-        mockMvc.perform(post("/queue/reorder")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(csrf()))
-                .andExpect(status().isOk());
-
-        assertEquals(1, jobRepository.findById(job1.getId()).orElseThrow().getSortOrder());
-        assertEquals(2, jobRepository.findById(job2.getId()).orElseThrow().getSortOrder());
-        assertEquals(0, jobRepository.findById(job3.getId()).orElseThrow().getSortOrder());
-    }
-
-    @Test
-    void reorder_schedulerRespectsOrder() {
-        UploadJob job1 = createJob(UploadStatus.PENDING);
-        UploadJob job2 = createJob(UploadStatus.PENDING);
-
-        // job2 should come first
-        job2.setSortOrder(0);
-        job1.setSortOrder(1);
-        jobRepository.save(job1);
-        jobRepository.save(job2);
-
-        var jobs = jobRepository.findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus.PENDING);
-        assertEquals(job2.getId(), jobs.get(0).getId());
-        assertEquals(job1.getId(), jobs.get(1).getId());
-    }
-
     // --- Delete: file handling edge cases ---
 
     @Test
@@ -237,23 +198,6 @@ class QueueControllerTest {
                 .andExpect(flash().attributeExists("success"));
 
         assertTrue(jobRepository.findById(job.getId()).isEmpty());
-    }
-
-    // --- Reorder: edge cases ---
-
-    @Test
-    void reorder_withNonExistentIds_skipsUnknown() throws Exception {
-        UploadJob job1 = createJob(UploadStatus.PENDING);
-
-        String body = "[999," + job1.getId() + "]";
-
-        mockMvc.perform(post("/queue/reorder")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body)
-                        .with(csrf()))
-                .andExpect(status().isOk());
-
-        assertEquals(1, jobRepository.findById(job1.getId()).orElseThrow().getSortOrder());
     }
 
     private UploadJob createJob(UploadStatus status) {

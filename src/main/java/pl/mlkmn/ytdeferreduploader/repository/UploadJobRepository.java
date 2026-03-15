@@ -10,12 +10,12 @@ import java.util.Optional;
 
 public interface UploadJobRepository extends JpaRepository<UploadJob, Long> {
 
-    List<UploadJob> findByStatusOrderBySortOrderAscCreatedAtAsc(UploadStatus status);
+    List<UploadJob> findByStatusOrderByCreatedAtAsc(UploadStatus status);
 
-    Optional<UploadJob> findFirstByStatusAndScheduledAtBeforeOrderBySortOrderAscCreatedAtAsc(
+    Optional<UploadJob> findFirstByStatusAndScheduledAtBeforeOrderByCreatedAtAsc(
             UploadStatus status, Instant before);
 
-    List<UploadJob> findAllByOrderBySortOrderAscCreatedAtDesc();
+    List<UploadJob> findAllByOrderByCreatedAtDesc();
 
     boolean existsByDriveFileId(String driveFileId);
 }
