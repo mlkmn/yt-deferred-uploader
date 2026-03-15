@@ -4,6 +4,8 @@ import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.youtube.YouTube;
+import com.google.api.services.youtube.model.Channel;
+import com.google.api.services.youtube.model.ChannelListResponse;
 import com.google.api.services.youtube.model.Playlist;
 import com.google.api.services.youtube.model.PlaylistItem;
 import com.google.api.services.youtube.model.PlaylistItemSnippet;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -28,6 +31,28 @@ public class YouTubePlaylistService {
     private final YouTubeCredentialService credentialService;
     private final NetHttpTransport httpTransport;
     private final GsonFactory jsonFactory;
+
+    public Optional<Channel> getChannel() {
+        Credential credential = credentialService.getCredential().orElse(null);
+        if (credential == null) {
+            return Optional.empty();
+        }
+
+        try {
+            ChannelListResponse response = buildClient(credential).channels()
+                    .list(List.of("snippet"))
+                    .setMine(true)
+                    .setMaxResults(1L)
+                    .execute();
+
+            if (response.getItems() != null && !response.getItems().isEmpty()) {
+                return Optional.of(response.getItems().getFirst());
+            }
+        } catch (IOException e) {
+            log.error("Failed to fetch channel info: error={}", e.getMessage(), e);
+        }
+        return Optional.empty();
+    }
 
     public List<Playlist> getUserPlaylists() {
         Credential credential = credentialService.getCredential().orElse(null);

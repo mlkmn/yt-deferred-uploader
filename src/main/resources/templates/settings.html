@@ -12,62 +12,25 @@
         <div class="col-lg-8">
 
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">YouTube Account</h5></div>
+                <div class="card-header"><h5 class="mb-0">YouTube</h5></div>
                 <div class="card-body">
-                    <div th:if="${youtubeConnected}">
-                        <p class="text-success mb-2">YouTube account is connected.</p>
+                    <div th:if="${youtubeConnected}" class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-success">Connected<span th:if="${channelTitle}"> — <span th:text="${channelTitle}"></span></span></span>
                         <form method="post" th:action="@{/settings/oauth/disconnect}" style="display:inline">
                             <button type="submit" class="btn btn-outline-danger btn-sm"
                                     onclick="return confirm('Disconnect YouTube account?')">Disconnect</button>
                         </form>
                     </div>
-                    <div th:unless="${youtubeConnected}">
+                    <div th:unless="${youtubeConnected}" class="mb-2">
                         <p class="text-muted mb-2">No YouTube account linked.</p>
                         <a th:href="@{/settings/oauth/connect}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
                     </div>
-                </div>
-            </div>
-
-            <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">YouTube Quota</h5></div>
-                <div class="card-body">
-                    <div th:if="${quotaExhausted}">
-                        <p class="text-danger mb-2">Quota exhausted — uploads are paused until the next YouTube quota reset.</p>
+                    <div th:if="${youtubeConnected && quotaExhausted}" class="d-flex align-items-center justify-content-between">
+                        <span class="text-danger">Quota exhausted — uploads paused</span>
                         <form method="post" th:action="@{/settings/quota/reset}" style="display:inline">
                             <button type="submit" class="btn btn-outline-warning btn-sm"
                                     onclick="return confirm('Reset quota status? Only do this if you know YouTube quota has been restored.')">Reset Quota</button>
                         </form>
-                    </div>
-                    <div th:unless="${quotaExhausted}">
-                        <p class="text-success mb-0">Quota available — uploads will proceed normally.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">Google Drive</h5></div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        Upload videos to a Google Drive folder from any device.
-                        The app will automatically detect new videos and queue them for YouTube upload.
-                    </p>
-                    <div class="mb-2">
-                        <label for="driveFolderDisplay" class="form-label">Drive folder URL or ID</label>
-                        <input type="text" class="form-control" id="driveFolderDisplay"
-                               th:value="${driveFolder}" disabled>
-                        <div class="form-text">
-                            Paste a Google Drive folder URL
-                            (e.g. https://drive.google.com/drive/folders/ABC123) or just the folder ID.
-                            Configured in the settings form below.
-                        </div>
-                    </div>
-                    <div th:if="${resolvedFolderId != null}" class="mt-2">
-                        <small class="text-success">
-                            Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
-                        </small>
-                    </div>
-                    <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="mt-2">
-                        <small class="text-danger">Could not parse folder ID from the saved value.</small>
                     </div>
                 </div>
             </div>
@@ -82,6 +45,12 @@
                             <input type="text" class="form-control" id="driveFolder" name="driveFolder"
                                    th:value="${driveFolder}"
                                    placeholder="https://drive.google.com/drive/folders/... or folder ID">
+                            <div th:if="${resolvedFolderId != null}" class="form-text text-success">
+                                Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
+                            </div>
+                            <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="form-text text-danger">
+                                Could not parse folder ID from the saved value.
+                            </div>
                         </div>
 
                         <div class="mb-3">

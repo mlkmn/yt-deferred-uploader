@@ -12,6 +12,7 @@ import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeUploadService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -34,6 +35,7 @@ class QueueControllerTest {
 
     @MockitoBean private YouTubeUploadService uploadService;
     @MockitoBean private YouTubeCredentialService credentialService;
+    @MockitoBean private GoogleDriveService driveService;
 
     @BeforeEach
     void setUp() {

@@ -126,7 +126,7 @@ The repository includes a `Dockerfile.railway` optimized for Railway deployment.
 
 1. Create a new Railway service from your GitHub repo
 2. In the service settings, set the **Dockerfile path** to `Dockerfile.railway`
-3. Add a **volume** mounted at `/app/storage` (persists the H2 database and uploaded files)
+3. Add a **volume** mounted at `/app/storage` (persists the H2 database)
 4. Set the following **environment variables**:
 
 | Variable | Required | Description |

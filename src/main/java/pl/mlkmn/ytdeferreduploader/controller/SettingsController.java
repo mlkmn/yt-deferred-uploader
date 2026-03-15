@@ -33,21 +33,19 @@ public class SettingsController {
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
         model.addAttribute("defaultPrivacy",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
-        model.addAttribute("driveFolder",
-                settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, ""));
+        String driveFolder = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+        model.addAttribute("driveFolder", driveFolder);
+        model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
         model.addAttribute("youtubeConnected", youtubeConnected);
         model.addAttribute("defaultPlaylist",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
         if (youtubeConnected) {
+            playlistService.getChannel().ifPresent(ch ->
+                    model.addAttribute("channelTitle", ch.getSnippet().getTitle()));
             model.addAttribute("playlists", playlistService.getUserPlaylists());
         }
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
-
-        // Show resolved folder ID for verification
-        String folderInput = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
-        String resolvedFolderId = GoogleDriveService.extractFolderId(folderInput);
-        model.addAttribute("resolvedFolderId", resolvedFolderId);
 
         return "settings";
     }

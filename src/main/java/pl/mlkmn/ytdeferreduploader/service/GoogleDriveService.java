@@ -125,6 +125,37 @@ public class GoogleDriveService {
         return null;
     }
 
+    /**
+     * Resolves a folder ID to its full path (e.g. "My Drive/Videos/Family").
+     * Walks up the parent chain until reaching the root.
+     */
+    public String getFolderPath(String folderId) {
+        Credential credential = credentialService.getCredential().orElse(null);
+        if (credential == null) {
+            return null;
+        }
+
+        Drive drive = buildClient(credential);
+        List<String> parts = new ArrayList<>();
+
+        try {
+            String currentId = folderId;
+            while (currentId != null) {
+                File file = drive.files().get(currentId)
+                        .setFields("name, parents")
+                        .execute();
+                parts.add(file.getName());
+                List<String> parents = file.getParents();
+                currentId = (parents != null && !parents.isEmpty()) ? parents.getFirst() : null;
+            }
+            Collections.reverse(parts);
+            return String.join("/", parts);
+        } catch (IOException e) {
+            log.warn("Failed to resolve folder path: folderId={}, error={}", folderId, e.getMessage());
+            return null;
+        }
+    }
+
     private Drive buildClient(Credential credential) {
         return new Drive.Builder(httpTransport, jsonFactory, credential)
                 .setApplicationName(APPLICATION_NAME)

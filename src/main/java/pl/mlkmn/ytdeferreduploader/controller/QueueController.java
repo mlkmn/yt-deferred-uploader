@@ -11,6 +11,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
+import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +26,8 @@ import java.util.Set;
 public class QueueController {
 
     private final UploadJobRepository uploadJobRepository;
+    private final SettingsService settingsService;
+    private final GoogleDriveService driveService;
 
     @GetMapping("/")
     public String root() {
@@ -36,6 +40,8 @@ public class QueueController {
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        String folderId = getConfiguredFolderId();
+        model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
         return "queue";
     }
 
@@ -101,6 +107,11 @@ public class QueueController {
             redirectAttributes.addFlashAttribute("success", "Job #" + id + " deleted");
         }
         return "redirect:/queue";
+    }
+
+    private String getConfiguredFolderId() {
+        String folderInput = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+        return GoogleDriveService.extractFolderId(folderInput);
     }
 
     private void deleteLocalFile(UploadJob job) {
