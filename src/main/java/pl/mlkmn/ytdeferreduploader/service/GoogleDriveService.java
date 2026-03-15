@@ -87,15 +87,17 @@ public class GoogleDriveService {
     }
 
     /**
-     * Deletes a file from Drive.
+     * Removes a file from Drive by trashing it.
+     * Uses trash instead of delete so it works for files owned by other users
+     * in shared folders (delete requires owner permission, trash does not).
      */
     public void deleteFile(String fileId) throws IOException {
         Credential credential = credentialService.getCredential()
                 .orElseThrow(() -> new IOException("YouTube/Drive account not connected"));
 
         Drive drive = buildClient(credential);
-        drive.files().delete(fileId).execute();
-        log.info("Deleted file from Drive: fileId={}", fileId);
+        drive.files().update(fileId, new File().setTrashed(true)).execute();
+        log.info("Trashed file in Drive: fileId={}", fileId);
     }
 
     /**
