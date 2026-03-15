@@ -121,6 +121,52 @@ class TitleGeneratorTest {
     }
 
     @Test
+    void compactFilename_extractsDateTime() throws IOException {
+        Path file = writeTempFile("VID20251123112349.mp4", new byte[]{1});
+        String title = titleGenerator.generate("VID20251123112349.mp4", file, null);
+        assertEquals("23-11-2025_112349", title);
+    }
+
+    @Test
+    void whatsappFilename_extractsDateWithCurrentTime() throws IOException {
+        Path file = writeTempFile("VID-20260214-WA0017.mp4", new byte[]{1});
+        String title = titleGenerator.generate("VID-20260214-WA0017.mp4", file, null);
+        assertTrue(title.startsWith("14-02-2026_"), "Should start with date from filename");
+        assertEquals(17, title.length(), "Should be full dd-MM-yyyy_HHmmss format");
+    }
+
+    // --- generateFromFilename tests (Drive jobs) ---
+
+    @Test
+    void generateFromFilename_androidPattern_extractsDate() {
+        String title = titleGenerator.generateFromFilename("VID_20260314_153022.mp4", null);
+        assertEquals("14-03-2026_153022", title);
+    }
+
+    @Test
+    void generateFromFilename_noPattern_usesModifiedMillis() {
+        long modified = Instant.parse("2025-08-20T12:00:00Z").toEpochMilli();
+        String title = titleGenerator.generateFromFilename("random_video.mp4", modified);
+        assertNotNull(title);
+        assertTrue(title.contains("2025"));
+    }
+
+    @Test
+    void generateFromFilename_noPatternNoModified_usesNow() {
+        String title = titleGenerator.generateFromFilename("random_video.mp4", null);
+        assertNotNull(title);
+        assertFalse(title.isBlank());
+    }
+
+    @Test
+    void generateFromFilename_nullFilename_usesModifiedMillis() {
+        long modified = Instant.parse("2025-08-20T12:00:00Z").toEpochMilli();
+        String title = titleGenerator.generateFromFilename(null, modified);
+        assertNotNull(title);
+        assertTrue(title.contains("2025"));
+    }
+
+    @Test
     void pre2000MetadataDate_ignored() throws IOException {
         // Create MP4 with a date from 1904 (QuickTime epoch zero)
         Instant ancientDate = Instant.parse("1904-01-01T00:00:00Z");

@@ -14,7 +14,8 @@ public class YouTubeApiConfig {
 
     public static final List<String> SCOPES = List.of(
             "https://www.googleapis.com/auth/youtube.upload",
-            "https://www.googleapis.com/auth/youtube"
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/drive"    // read + delete files from Drive
     );
 
     @Bean

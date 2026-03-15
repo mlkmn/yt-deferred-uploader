@@ -9,6 +9,7 @@ import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
@@ -31,6 +32,7 @@ class UploadSchedulerTest {
     @Mock private YouTubeUploadService uploadService;
     @Mock private YouTubeCredentialService credentialService;
     @Mock private YouTubePlaylistService playlistService;
+    @Mock private GoogleDriveService driveService;
     @Mock private QuotaTracker quotaTracker;
 
     private AppProperties appProperties;
@@ -42,7 +44,7 @@ class UploadSchedulerTest {
         appProperties.getScheduler().setMaxRetries(3);
         appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
         scheduler = new UploadScheduler(jobRepository, uploadService,
-                credentialService, playlistService, quotaTracker, appProperties);
+                credentialService, playlistService, driveService, quotaTracker, appProperties);
     }
 
     @Test
@@ -228,6 +230,7 @@ class UploadSchedulerTest {
         UploadJob job = new UploadJob();
         job.setId(id);
         job.setTitle("Test Video");
+        job.setFilePath("/tmp/test-video.mp4");
         job.setStatus(status);
         job.setScheduledAt(Instant.now().minusSeconds(60));
         return job;

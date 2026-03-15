@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" data-bs-theme="dark">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,9 +14,8 @@
 <body>
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark mb-4">
     <div class="container">
-        <a class="navbar-brand" th:href="@{/upload}">YT Deferred Uploader</a>
+        <a class="navbar-brand" th:href="@{/queue}">YT Deferred Uploader</a>
         <div class="navbar-nav">
-            <a class="nav-link" th:href="@{/upload}" th:classappend="${#strings.equals(activePage,'upload')} ? 'active'">Upload</a>
             <a class="nav-link" th:href="@{/queue}" th:classappend="${#strings.equals(activePage,'queue')} ? 'active'">Queue</a>
             <a class="nav-link" th:href="@{/settings}" th:classappend="${#strings.equals(activePage,'settings')} ? 'active'">Settings</a>
         </div>
