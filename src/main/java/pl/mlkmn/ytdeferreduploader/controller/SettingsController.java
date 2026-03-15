@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
@@ -36,6 +37,8 @@ public class SettingsController {
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
         model.addAttribute("defaultCategory",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_CATEGORY, ""));
+        model.addAttribute("driveFolder",
+                settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, ""));
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
         model.addAttribute("youtubeConnected", youtubeConnected);
         model.addAttribute("defaultPlaylist",
@@ -44,6 +47,12 @@ public class SettingsController {
             model.addAttribute("playlists", playlistService.getUserPlaylists());
         }
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
+
+        // Show resolved folder ID for verification
+        String folderInput = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+        String resolvedFolderId = GoogleDriveService.extractFolderId(folderInput);
+        model.addAttribute("resolvedFolderId", resolvedFolderId);
+
         return "settings";
     }
 
@@ -98,12 +107,25 @@ public class SettingsController {
                                @RequestParam("defaultPrivacy") String defaultPrivacy,
                                @RequestParam("defaultCategory") String defaultCategory,
                                @RequestParam(value = "defaultPlaylist", required = false) String defaultPlaylist,
+                               @RequestParam(value = "driveFolder", required = false) String driveFolder,
                                RedirectAttributes redirectAttributes) {
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_TAGS, defaultTags);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
         settingsService.set(SettingsService.KEY_DEFAULT_CATEGORY, defaultCategory);
         settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
+
+        // Validate and save Drive folder
+        if (driveFolder != null && !driveFolder.isBlank()) {
+            String folderId = GoogleDriveService.extractFolderId(driveFolder);
+            if (folderId == null) {
+                redirectAttributes.addFlashAttribute("error",
+                        "Invalid Drive folder URL or ID. Paste a Google Drive folder URL or folder ID.");
+                return "redirect:/settings";
+            }
+        }
+        settingsService.set(SettingsService.KEY_DRIVE_FOLDER, driveFolder != null ? driveFolder : "");
+
         redirectAttributes.addFlashAttribute("success", "Settings saved");
         return "redirect:/settings";
     }

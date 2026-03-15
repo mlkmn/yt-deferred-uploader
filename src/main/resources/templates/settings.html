@@ -44,10 +44,45 @@
                 </div>
             </div>
 
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Google Drive</h5></div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Upload videos to a Google Drive folder from any device.
+                        The app will automatically detect new videos and queue them for YouTube upload.
+                    </p>
+                    <div class="mb-2">
+                        <label for="driveFolderDisplay" class="form-label">Drive folder URL or ID</label>
+                        <input type="text" class="form-control" id="driveFolderDisplay"
+                               th:value="${driveFolder}" disabled>
+                        <div class="form-text">
+                            Paste a Google Drive folder URL
+                            (e.g. https://drive.google.com/drive/folders/ABC123) or just the folder ID.
+                            Configured in the settings form below.
+                        </div>
+                    </div>
+                    <div th:if="${resolvedFolderId != null}" class="mt-2">
+                        <small class="text-success">
+                            Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
+                        </small>
+                    </div>
+                    <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="mt-2">
+                        <small class="text-danger">Could not parse folder ID from the saved value.</small>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header"><h5 class="mb-0">Default Metadata</h5></div>
                 <div class="card-body">
                     <form method="post" th:action="@{/settings}">
+
+                        <div class="mb-3">
+                            <label for="driveFolder" class="form-label">Google Drive folder</label>
+                            <input type="text" class="form-control" id="driveFolder" name="driveFolder"
+                                   th:value="${driveFolder}"
+                                   placeholder="https://drive.google.com/drive/folders/... or folder ID">
+                        </div>
 
                         <div class="mb-3">
                             <label for="defaultDescription" class="form-label">Default description</label>

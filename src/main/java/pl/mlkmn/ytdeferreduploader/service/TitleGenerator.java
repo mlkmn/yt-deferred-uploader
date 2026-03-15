@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -21,44 +22,59 @@ import java.util.regex.Pattern;
 
 @Slf4j
 @Component
-class TitleGenerator {
+public class TitleGenerator {
 
     private static final DateTimeFormatter TITLE_FORMAT =
             DateTimeFormatter.ofPattern("dd-MM-yyyy_HHmmss");
 
-    // Matches date-time patterns commonly found in video filenames from phones and apps:
+    // Matches date+time patterns in video filenames from phones and apps:
     //   VID_20260314_153022.mp4          (Android default)
     //   20260314_153022.mp4              (Android, no prefix)
     //   2026-03-14 15.30.22.mp4          (Samsung)
     //   video_2026-03-14_15-30-22.mp4    (Telegram)
     //   Screen Recording 2026-03-14 at 15.30.22.mov  (iOS)
-    //
-    // Captures 6 groups: yyyy, MM, dd, HH, mm, ss
-    // Group 1-3 (date): digits separated by optional '-' or '_'
-    // Group 4-6 (time): digits separated by optional '.', '_', or '-'
-    // Date and time are separated by whitespace, '_', '-', or ' at '
-    private static final Pattern FILENAME_DATE_PATTERN =
+    private static final Pattern FILENAME_DATE_TIME_PATTERN =
             Pattern.compile("(\\d{4})[\\-_]?(\\d{2})[\\-_]?(\\d{2})[\\s_\\-]+(?:at\\s)?(\\d{2})[._\\-]?(\\d{2})[._\\-]?(\\d{2})");
+
+    // Matches date-only patterns (no time component) preceded by a non-digit boundary
+    // to avoid matching arbitrary numeric filenames like "1000031216.mp4":
+    //   VID-20260214-WA0017.mp4          (WhatsApp)
+    //   VID_20260214_WA0017.mp4          (WhatsApp variant)
+    private static final Pattern FILENAME_DATE_ONLY_PATTERN =
+            Pattern.compile("(?<=\\D)(\\d{4})(\\d{2})(\\d{2})(?!\\d)");
 
     private static final AutoDetectParser TIKA_PARSER = new AutoDetectParser();
     private static final Instant MIN_VALID_DATE = Instant.parse("2000-01-01T00:00:00Z");
 
-    String generate(String originalFilename, Path filePath, Long fileLastModified) {
+    /**
+     * Generate title from filename + optional modification timestamp (no local file needed).
+     * Used for Drive-sourced jobs where there is no local file for Tika extraction.
+     * Fallback chain: filename pattern -> modifiedMillis -> current time
+     */
+    public String generateFromFilename(String filename, Long modifiedMillis) {
+        if (filename != null) {
+            String parsed = tryParseFilenameDate(filename);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+
+        Instant timestamp = (modifiedMillis != null)
+                ? Instant.ofEpochMilli(modifiedMillis)
+                : Instant.now();
+        return TITLE_FORMAT.format(timestamp.atZone(ZoneId.systemDefault()));
+    }
+
+    /**
+     * Generate title with full fallback chain including Tika metadata extraction.
+     * Used for local file uploads.
+     * Fallback chain: filename pattern -> Tika metadata -> fileLastModified -> current time
+     */
+    public String generate(String originalFilename, Path filePath, Long fileLastModified) {
         if (originalFilename != null) {
-            Matcher matcher = FILENAME_DATE_PATTERN.matcher(originalFilename);
-            if (matcher.find()) {
-                try {
-                    LocalDateTime dateTime = LocalDateTime.of(
-                            Integer.parseInt(matcher.group(1)),  // year
-                            Integer.parseInt(matcher.group(2)),  // month
-                            Integer.parseInt(matcher.group(3)),  // day
-                            Integer.parseInt(matcher.group(4)),  // hour
-                            Integer.parseInt(matcher.group(5)),  // minute
-                            Integer.parseInt(matcher.group(6))); // second
-                    return TITLE_FORMAT.format(dateTime);
-                } catch (Exception e) {
-                    log.warn("Matched date pattern in filename '{}' but could not parse: {}", originalFilename, e.getMessage());
-                }
+            String parsed = tryParseFilenameDate(originalFilename);
+            if (parsed != null) {
+                return parsed;
             }
         }
 
@@ -72,6 +88,42 @@ class TitleGenerator {
                 ? Instant.ofEpochMilli(fileLastModified)
                 : Instant.now();
         return TITLE_FORMAT.format(timestamp.atZone(ZoneId.systemDefault()));
+    }
+
+    private String tryParseFilenameDate(String filename) {
+        // Try date+time first (most specific)
+        Matcher matcher = FILENAME_DATE_TIME_PATTERN.matcher(filename);
+        if (matcher.find()) {
+            try {
+                LocalDateTime dateTime = LocalDateTime.of(
+                        Integer.parseInt(matcher.group(1)),
+                        Integer.parseInt(matcher.group(2)),
+                        Integer.parseInt(matcher.group(3)),
+                        Integer.parseInt(matcher.group(4)),
+                        Integer.parseInt(matcher.group(5)),
+                        Integer.parseInt(matcher.group(6)));
+                return TITLE_FORMAT.format(dateTime);
+            } catch (Exception e) {
+                log.warn("Matched date-time pattern in filename '{}' but could not parse: {}", filename, e.getMessage());
+            }
+        }
+
+        // Fall back to date-only (e.g. WhatsApp: VID-20260214-WA0017.mp4)
+        // Combines parsed date with current time
+        Matcher dateOnly = FILENAME_DATE_ONLY_PATTERN.matcher(filename);
+        if (dateOnly.find()) {
+            try {
+                LocalDate date = LocalDate.of(
+                        Integer.parseInt(dateOnly.group(1)),
+                        Integer.parseInt(dateOnly.group(2)),
+                        Integer.parseInt(dateOnly.group(3)));
+                LocalDateTime dateTime = date.atTime(java.time.LocalTime.now());
+                return TITLE_FORMAT.format(dateTime);
+            } catch (Exception e) {
+                log.warn("Matched date pattern in filename '{}' but could not parse: {}", filename, e.getMessage());
+            }
+        }
+        return null;
     }
 
     private LocalDateTime extractCreationDateFromMetadata(Path filePath) {

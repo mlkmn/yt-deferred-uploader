@@ -30,7 +30,7 @@ public class QueueController {
 
     @GetMapping("/")
     public String root() {
-        return "redirect:/upload";
+        return "redirect:/queue";
     }
 
     @GetMapping("/queue")

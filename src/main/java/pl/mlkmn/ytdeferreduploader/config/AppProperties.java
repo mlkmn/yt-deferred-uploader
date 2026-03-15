@@ -18,6 +18,7 @@ public class AppProperties {
     private Scheduler scheduler = new Scheduler();
     private Admin admin = new Admin();
     private Cleanup cleanup = new Cleanup();
+    private Drive drive = new Drive();
 
     @Getter
     @Setter
@@ -47,6 +48,12 @@ public class AppProperties {
     public static class Cleanup {
         private boolean enabled = true;
         private long retentionHours = 24;
-        private String cron = "0 0 * * * *"; // every hour
+        private String cron = "0 0 * * * *";
+    }
+
+    @Getter
+    @Setter
+    public static class Drive {
+        private long pollIntervalMs = 60000; // 1 minute
     }
 }

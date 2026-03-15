@@ -31,6 +31,7 @@ import java.util.Set;
 public class YouTubeUploadService {
 
     private static final String APPLICATION_NAME = "yt-deferred-uploader";
+    private static final int CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
     private static final Set<Integer> PERMANENT_HTTP_CODES = Set.of(
             400, // Bad request (invalid metadata, unsupported format)
             401, // Unauthorized (revoked token)
@@ -42,7 +43,46 @@ public class YouTubeUploadService {
     private final NetHttpTransport httpTransport;
     private final GsonFactory jsonFactory;
 
+    /**
+     * Upload from a local file (legacy support for pre-existing jobs).
+     */
     public String upload(UploadJob job) {
+        Path filePath = Path.of(job.getFilePath());
+
+        try {
+            String mimeType = Files.probeContentType(filePath);
+            if (mimeType == null) {
+                mimeType = "video/*";
+            }
+
+            try (InputStream fileStream = new BufferedInputStream(Files.newInputStream(filePath))) {
+                long fileSize = Files.size(filePath);
+                log.info("YouTube upload starting (file): jobId={}, title='{}', fileSize={} bytes",
+                        job.getId(), job.getTitle(), fileSize);
+                return executeUpload(job, fileStream, fileSize, mimeType);
+            }
+        } catch (NoSuchFileException e) {
+            throw new UploadException("Video file not found: " + filePath, e, true);
+        } catch (IOException e) {
+            throw new UploadException("Upload I/O error: " + e.getMessage(), e, false);
+        }
+    }
+
+    /**
+     * Upload from a stream (Drive stream-through — no local file).
+     */
+    public String uploadFromStream(UploadJob job, InputStream inputStream, long contentLength, String mimeType) {
+        try {
+            log.info("YouTube upload starting (stream): jobId={}, title='{}', contentLength={} bytes",
+                    job.getId(), job.getTitle(), contentLength);
+            return executeUpload(job, inputStream, contentLength, mimeType);
+        } catch (IOException e) {
+            throw new UploadException("Upload I/O error: " + e.getMessage(), e, false);
+        }
+    }
+
+    private String executeUpload(UploadJob job, InputStream inputStream, long contentLength, String mimeType)
+            throws IOException {
         Credential credential = credentialService.getCredential()
                 .orElseThrow(() -> new UploadException("YouTube account not connected or token refresh failed",
                         null, true));
@@ -51,6 +91,36 @@ public class YouTubeUploadService {
                 .setApplicationName(APPLICATION_NAME)
                 .build();
 
+        Video video = buildVideoMetadata(job);
+
+        try {
+            InputStreamContent mediaContent = new InputStreamContent(mimeType, inputStream);
+            if (contentLength > 0) {
+                mediaContent.setLength(contentLength);
+            }
+
+            YouTube.Videos.Insert insert = youtube.videos()
+                    .insert(List.of("snippet", "status"), video, mediaContent);
+
+            insert.getMediaHttpUploader().setDirectUploadEnabled(false);
+            insert.getMediaHttpUploader().setChunkSize(CHUNK_SIZE);
+
+            Video uploadedVideo = insert.execute();
+
+            String youtubeId = uploadedVideo.getId();
+            log.info("YouTube upload complete: jobId={}, youtubeId={}", job.getId(), youtubeId);
+            return youtubeId;
+        } catch (GoogleJsonResponseException e) {
+            boolean permanent = PERMANENT_HTTP_CODES.contains(e.getStatusCode());
+            boolean quotaExhausted = e.getStatusCode() == 429;
+            throw new UploadException("YouTube API error (" + e.getStatusCode() + "): "
+                    + e.getDetails().getMessage(), e, permanent, quotaExhausted);
+        } catch (TokenResponseException e) {
+            throw new UploadException("Token error: " + e.getMessage(), e, true);
+        }
+    }
+
+    private Video buildVideoMetadata(UploadJob job) {
         Video video = new Video();
 
         VideoSnippet snippet = new VideoSnippet();
@@ -69,43 +139,6 @@ public class YouTubeUploadService {
         status.setPrivacyStatus(job.getPrivacyStatus().name().toLowerCase());
         video.setStatus(status);
 
-        Path filePath = Path.of(job.getFilePath());
-
-        try {
-            String mimeType = Files.probeContentType(filePath);
-            if (mimeType == null) {
-                mimeType = "video/*";
-            }
-
-            try (InputStream fileStream = new BufferedInputStream(Files.newInputStream(filePath))) {
-                InputStreamContent mediaContent = new InputStreamContent(mimeType, fileStream);
-                mediaContent.setLength(Files.size(filePath));
-
-                YouTube.Videos.Insert insert = youtube.videos()
-                        .insert(List.of("snippet", "status"), video, mediaContent);
-
-                insert.getMediaHttpUploader().setDirectUploadEnabled(false);
-                insert.getMediaHttpUploader().setChunkSize(10 * 1024 * 1024); // 10 MB chunks
-
-                log.info("YouTube upload starting: jobId={}, title='{}', fileSize={} bytes",
-                        job.getId(), job.getTitle(), job.getFileSizeBytes());
-                Video uploadedVideo = insert.execute();
-
-                String youtubeId = uploadedVideo.getId();
-                log.info("YouTube upload complete: jobId={}, youtubeId={}", job.getId(), youtubeId);
-                return youtubeId;
-            }
-        } catch (GoogleJsonResponseException e) {
-            boolean permanent = PERMANENT_HTTP_CODES.contains(e.getStatusCode());
-            boolean quotaExhausted = e.getStatusCode() == 429;
-            throw new UploadException("YouTube API error (" + e.getStatusCode() + "): "
-                    + e.getDetails().getMessage(), e, permanent, quotaExhausted);
-        } catch (TokenResponseException e) {
-            throw new UploadException("Token error: " + e.getMessage(), e, true);
-        } catch (NoSuchFileException e) {
-            throw new UploadException("Video file not found: " + filePath, e, true);
-        } catch (IOException e) {
-            throw new UploadException("Upload I/O error: " + e.getMessage(), e, false);
-        }
+        return video;
     }
 }

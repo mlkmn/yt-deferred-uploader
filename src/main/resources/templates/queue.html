@@ -14,7 +14,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Upload Queue</h4>
-        <a th:href="@{/upload}" class="btn btn-primary btn-sm">New Upload</a>
+        <span class="text-muted small">Videos are queued automatically from Google Drive</span>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
@@ -25,7 +25,7 @@
          hx-swap="outerHTML">
 
         <div th:if="${#lists.isEmpty(jobs)}" class="text-muted text-center py-5">
-            No jobs yet. <a th:href="@{/upload}">Upload a video</a> to get started.
+            No jobs yet. Add videos to your Google Drive folder to get started.
         </div>
 
         <div class="table-responsive" th:unless="${#lists.isEmpty(jobs)}">
@@ -49,7 +49,11 @@
                     <tr th:each="job : ${jobs}" th:attr="data-id=${job.id}">
                         <td class="drag-handle" style="cursor:grab">&#x2630;</td>
                         <td th:text="${job.id}"></td>
-                        <td th:text="${job.title}"></td>
+                        <td>
+                            <span th:text="${job.title}"></span>
+                            <small th:if="${job.driveFileName != null}" class="text-muted d-block"
+                                   th:text="'Drive: ' + ${job.driveFileName}"></small>
+                        </td>
                         <td th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '—'}"></td>
                         <td><span class="badge text-bg-secondary" th:text="${job.privacyStatus}"></span></td>
                         <td>
