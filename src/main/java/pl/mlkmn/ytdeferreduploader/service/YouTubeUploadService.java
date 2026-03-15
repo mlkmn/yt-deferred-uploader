@@ -86,9 +86,12 @@ public class YouTubeUploadService {
                 .orElseThrow(() -> new UploadException("YouTube account not connected or token refresh failed",
                         null, true));
 
-        YouTube youtube = new YouTube.Builder(httpTransport, jsonFactory, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+        // Disable Google HTTP client retries — UploadScheduler handles retries with backoff,
+        // and transparent retries on chunked uploads can cause duplicate videos on YouTube.
+        YouTube youtube = new YouTube.Builder(httpTransport, jsonFactory, request -> {
+            credential.initialize(request);
+            request.setNumberOfRetries(0);
+        }).setApplicationName(APPLICATION_NAME).build();
 
         Video video = buildVideoMetadata(job);
 
