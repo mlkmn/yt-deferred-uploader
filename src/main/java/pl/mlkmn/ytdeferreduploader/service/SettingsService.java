@@ -19,6 +19,7 @@ public class SettingsService {
     public static final String KEY_OAUTH_ACCESS_TOKEN = "oauth_access_token";
     public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
     public static final String KEY_OAUTH_TOKEN_EXPIRY = "oauth_token_expiry_seconds";
+    public static final String KEY_DRIVE_FOLDER = "drive_folder";
 
     private final AppSettingRepository appSettingRepository;
 

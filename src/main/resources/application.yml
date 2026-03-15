@@ -17,6 +17,8 @@ app:
     enabled: true
     retention-hours: 24
     cron: "0 0 * * * *"
+  drive:
+    poll-interval-ms: 60000
 
 logging:
   level:

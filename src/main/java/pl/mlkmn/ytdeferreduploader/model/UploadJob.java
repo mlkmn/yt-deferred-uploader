@@ -32,6 +32,16 @@ public class UploadJob {
     @Column(name = "privacy_status")
     private PrivacyStatus privacyStatus = PrivacyStatus.PRIVATE;
 
+    // --- Drive-specific fields ---
+
+    @Column(name = "drive_file_id", length = 100, unique = true)
+    private String driveFileId;
+
+    @Column(name = "drive_file_name", length = 500)
+    private String driveFileName;
+
+    // --- Legacy field (kept for backward compatibility with existing jobs) ---
+
     @Column(name = "file_path", length = 500)
     private String filePath;
 
@@ -79,5 +89,12 @@ public class UploadJob {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    /**
+     * Returns true if this job should be uploaded via Drive stream-through.
+     */
+    public boolean isDriveJob() {
+        return driveFileId != null && !driveFileId.isBlank();
     }
 }

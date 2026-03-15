@@ -38,7 +38,7 @@ public class SecurityConfig {
                         })
                         .successHandler((request, response, authentication) -> {
                             rateLimitFilter.clearAttempts(request);
-                            response.sendRedirect("/upload");
+                            response.sendRedirect("/queue");
                         })
                         .permitAll()
                 )
