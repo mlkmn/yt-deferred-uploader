@@ -36,6 +36,11 @@ public class TitleGenerator {
     private static final Pattern FILENAME_DATE_TIME_PATTERN =
             Pattern.compile("(\\d{4})[\\-_]?(\\d{2})[\\-_]?(\\d{2})[\\s_\\-]+(?:at\\s)?(\\d{2})[._\\-]?(\\d{2})[._\\-]?(\\d{2})");
 
+    // Matches 14-digit compact date+time with no separators, preceded by a non-digit:
+    //   VID20251123112349.mp4
+    private static final Pattern FILENAME_COMPACT_DATE_TIME_PATTERN =
+            Pattern.compile("(?<=\\D)(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(?!\\d)");
+
     // Matches date-only patterns (no time component) preceded by a non-digit boundary
     // to avoid matching arbitrary numeric filenames like "1000031216.mp4":
     //   VID-20260214-WA0017.mp4          (WhatsApp)
@@ -105,6 +110,23 @@ public class TitleGenerator {
                 return TITLE_FORMAT.format(dateTime);
             } catch (Exception e) {
                 log.warn("Matched date-time pattern in filename '{}' but could not parse: {}", filename, e.getMessage());
+            }
+        }
+
+        // Try compact 14-digit date+time (e.g. VID20251123112349.mp4)
+        Matcher compact = FILENAME_COMPACT_DATE_TIME_PATTERN.matcher(filename);
+        if (compact.find()) {
+            try {
+                LocalDateTime dateTime = LocalDateTime.of(
+                        Integer.parseInt(compact.group(1)),
+                        Integer.parseInt(compact.group(2)),
+                        Integer.parseInt(compact.group(3)),
+                        Integer.parseInt(compact.group(4)),
+                        Integer.parseInt(compact.group(5)),
+                        Integer.parseInt(compact.group(6)));
+                return TITLE_FORMAT.format(dateTime);
+            } catch (Exception e) {
+                log.warn("Matched compact date-time pattern in filename '{}' but could not parse: {}", filename, e.getMessage());
             }
         }
 

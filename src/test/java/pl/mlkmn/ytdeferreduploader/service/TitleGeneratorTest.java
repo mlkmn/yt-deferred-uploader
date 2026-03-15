@@ -121,6 +121,13 @@ class TitleGeneratorTest {
     }
 
     @Test
+    void compactFilename_extractsDateTime() throws IOException {
+        Path file = writeTempFile("VID20251123112349.mp4", new byte[]{1});
+        String title = titleGenerator.generate("VID20251123112349.mp4", file, null);
+        assertEquals("23-11-2025_112349", title);
+    }
+
+    @Test
     void whatsappFilename_extractsDateWithCurrentTime() throws IOException {
         Path file = writeTempFile("VID-20260214-WA0017.mp4", new byte[]{1});
         String title = titleGenerator.generate("VID-20260214-WA0017.mp4", file, null);
