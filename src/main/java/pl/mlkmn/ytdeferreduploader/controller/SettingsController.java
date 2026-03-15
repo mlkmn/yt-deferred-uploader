@@ -93,6 +93,7 @@ public class SettingsController {
         settingsService.delete(SettingsService.KEY_OAUTH_ACCESS_TOKEN);
         settingsService.delete(SettingsService.KEY_OAUTH_REFRESH_TOKEN);
         settingsService.delete(SettingsService.KEY_OAUTH_TOKEN_EXPIRY);
+        settingsService.delete(SettingsService.KEY_DRIVE_FOLDER);
         redirectAttributes.addFlashAttribute("success", "YouTube account disconnected");
         return "redirect:/settings";
     }

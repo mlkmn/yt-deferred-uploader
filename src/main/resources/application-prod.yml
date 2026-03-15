@@ -19,6 +19,8 @@ logging:
     pl.mlkmn.ytdeferreduploader: INFO
 
 spring:
+  thymeleaf:
+    cache: true
   h2:
     console:
       enabled: false

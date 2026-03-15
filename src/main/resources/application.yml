@@ -34,6 +34,8 @@ management:
       show-details: when-authorized
 
 spring:
+  thymeleaf:
+    cache: false
   servlet:
     multipart:
       max-file-size: 500MB
