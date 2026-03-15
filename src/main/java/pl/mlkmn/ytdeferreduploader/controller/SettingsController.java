@@ -49,19 +49,28 @@ public class SettingsController {
 
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
+        String redirectUri = appProperties.getYoutube().getRedirectUri();
+        log.info("OAuth connect initiated: redirectUri={}", redirectUri);
         String authUrl = authFlow.newAuthorizationUrl()
-                .setRedirectUri(appProperties.getYoutube().getRedirectUri())
+                .setRedirectUri(redirectUri)
                 .build();
+        log.info("Redirecting to Google OAuth: url={}", authUrl);
         return "redirect:" + authUrl;
     }
 
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
+        String redirectUri = appProperties.getYoutube().getRedirectUri();
+        log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
             GoogleTokenResponse tokenResponse = authFlow.newTokenRequest(code)
-                    .setRedirectUri(appProperties.getYoutube().getRedirectUri())
+                    .setRedirectUri(redirectUri)
                     .execute();
+            log.info("OAuth token exchange successful: hasAccessToken={}, hasRefreshToken={}, expiresIn={}",
+                    tokenResponse.getAccessToken() != null,
+                    tokenResponse.getRefreshToken() != null,
+                    tokenResponse.getExpiresInSeconds());
             settingsService.set(SettingsService.KEY_OAUTH_ACCESS_TOKEN, tokenResponse.getAccessToken());
             settingsService.set(SettingsService.KEY_OAUTH_REFRESH_TOKEN, tokenResponse.getRefreshToken());
             if (tokenResponse.getExpiresInSeconds() != null) {
@@ -70,7 +79,7 @@ public class SettingsController {
             }
             redirectAttributes.addFlashAttribute("success", "YouTube account linked successfully");
         } catch (Exception e) {
-            log.error("OAuth callback failed", e);
+            log.error("OAuth callback failed: redirectUri={}, error={}", redirectUri, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "OAuth failed: " + e.getMessage());
         }
         return "redirect:/settings";
