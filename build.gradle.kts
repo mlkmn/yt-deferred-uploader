@@ -3,6 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "3.4.3"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.owasp.dependencycheck") version "12.1.1"
 }
 
 group = "pl.mlkmn"
@@ -29,12 +30,12 @@ dependencies {
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     runtimeOnly("com.h2database:h2")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
     implementation("com.google.apis:google-api-services-youtube:v3-rev20241022-2.0.0")
     implementation("com.google.oauth-client:google-oauth-client-jetty:1.36.0")
     implementation("com.google.http-client:google-http-client-jackson2:1.45.3")
-    implementation("org.apache.tika:tika-core:2.9.2")
-    implementation("org.apache.tika:tika-parser-audiovideo-module:2.9.2")
+    implementation("org.apache.tika:tika-core:3.2.3")
+    implementation("org.apache.tika:tika-parser-audiovideo-module:3.2.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
