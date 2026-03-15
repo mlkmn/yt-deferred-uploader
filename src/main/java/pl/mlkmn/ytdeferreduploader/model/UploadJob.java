@@ -25,9 +25,6 @@ public class UploadJob {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Size(max = 500)
-    private String tags;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "privacy_status")
     private PrivacyStatus privacyStatus = PrivacyStatus.PRIVATE;

@@ -91,24 +91,12 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="defaultTags" class="form-label">Default tags (comma-separated)</label>
-                            <input type="text" class="form-control" id="defaultTags" name="defaultTags"
-                                   th:value="${defaultTags}">
-                        </div>
-
-                        <div class="mb-3">
                             <label for="defaultPrivacy" class="form-label">Default privacy</label>
                             <select class="form-select" id="defaultPrivacy" name="defaultPrivacy">
                                 <option value="PRIVATE" th:selected="${defaultPrivacy == 'PRIVATE'}">Private</option>
                                 <option value="UNLISTED" th:selected="${defaultPrivacy == 'UNLISTED'}">Unlisted</option>
                                 <option value="PUBLIC" th:selected="${defaultPrivacy == 'PUBLIC'}">Public</option>
                             </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="defaultCategory" class="form-label">Default YouTube category ID</label>
-                            <input type="text" class="form-control" id="defaultCategory" name="defaultCategory"
-                                   th:value="${defaultCategory}" placeholder="e.g. 22 (People & Blogs)">
                         </div>
 
                         <div class="mb-3" th:if="${youtubeConnected}">

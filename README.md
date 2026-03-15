@@ -11,7 +11,7 @@ A self-hosted web application that polls a Google Drive folder for videos and pe
 - **Quota awareness** — Automatically defers uploads when YouTube returns 429; auto-resets daily
 - **Playlists** — Default playlist selection; videos are added to a playlist after upload
 - **OAuth2** — Connect/disconnect YouTube + Drive account from the settings page
-- **Settings** — Configurable defaults for description, tags, privacy, category, playlist, and Drive folder
+- **Settings** — Configurable defaults for description, privacy, playlist, and Drive folder
 - **Dark theme** — Bootstrap 5.3 dark mode throughout
 - **Docker** — Multi-stage Dockerfile for containerized deployment (non-root, with healthcheck)
 

@@ -12,9 +12,7 @@ import java.util.Optional;
 public class SettingsService {
 
     public static final String KEY_DEFAULT_DESCRIPTION = "default_description";
-    public static final String KEY_DEFAULT_TAGS = "default_tags";
     public static final String KEY_DEFAULT_PRIVACY = "default_privacy";
-    public static final String KEY_DEFAULT_CATEGORY = "default_category";
     public static final String KEY_DEFAULT_PLAYLIST = "default_playlist";
     public static final String KEY_OAUTH_ACCESS_TOKEN = "oauth_access_token";
     public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";

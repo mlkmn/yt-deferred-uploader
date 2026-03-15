@@ -31,12 +31,8 @@ public class SettingsController {
     public String showSettings(Model model) {
         model.addAttribute("defaultDescription",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
-        model.addAttribute("defaultTags",
-                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_TAGS, ""));
         model.addAttribute("defaultPrivacy",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
-        model.addAttribute("defaultCategory",
-                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_CATEGORY, ""));
         model.addAttribute("driveFolder",
                 settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, ""));
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
@@ -112,16 +108,12 @@ public class SettingsController {
 
     @PostMapping("/settings")
     public String saveSettings(@RequestParam("defaultDescription") String defaultDescription,
-                               @RequestParam("defaultTags") String defaultTags,
                                @RequestParam("defaultPrivacy") String defaultPrivacy,
-                               @RequestParam("defaultCategory") String defaultCategory,
                                @RequestParam(value = "defaultPlaylist", required = false) String defaultPlaylist,
                                @RequestParam(value = "driveFolder", required = false) String driveFolder,
                                RedirectAttributes redirectAttributes) {
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
-        settingsService.set(SettingsService.KEY_DEFAULT_TAGS, defaultTags);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
-        settingsService.set(SettingsService.KEY_DEFAULT_CATEGORY, defaultCategory);
         settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
 
         // Validate and save Drive folder

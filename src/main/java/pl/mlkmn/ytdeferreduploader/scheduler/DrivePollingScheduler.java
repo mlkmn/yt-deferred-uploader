@@ -48,7 +48,6 @@ public class DrivePollingScheduler {
         }
 
         String defaultDescription = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, "");
-        String defaultTags = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_TAGS, "");
         String defaultPrivacy = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE");
         String defaultPlaylist = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, "");
 
@@ -69,7 +68,6 @@ public class DrivePollingScheduler {
             job.setTitle(titleGenerator.generateFromFilename(file.getName(), driveModifiedMillis));
 
             job.setDescription(defaultDescription);
-            job.setTags(defaultTags);
             job.setPrivacyStatus(
                     pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
             if (defaultPlaylist != null && !defaultPlaylist.isBlank()) {

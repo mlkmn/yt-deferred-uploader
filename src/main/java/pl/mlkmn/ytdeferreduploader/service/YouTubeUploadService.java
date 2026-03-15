@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -126,13 +125,6 @@ public class YouTubeUploadService {
         VideoSnippet snippet = new VideoSnippet();
         snippet.setTitle(job.getTitle());
         snippet.setDescription(job.getDescription());
-        if (job.getTags() != null && !job.getTags().isBlank()) {
-            List<String> tags = Arrays.stream(job.getTags().split(","))
-                    .map(String::trim)
-                    .filter(t -> !t.isEmpty())
-                    .toList();
-            snippet.setTags(tags);
-        }
         video.setSnippet(snippet);
 
         VideoStatus status = new VideoStatus();
