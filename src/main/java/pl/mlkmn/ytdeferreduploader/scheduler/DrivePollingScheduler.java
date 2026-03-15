@@ -70,7 +70,8 @@ public class DrivePollingScheduler {
             job.setDescription(defaultDescription);
             job.setPrivacyStatus(
                     pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
-            if (defaultPlaylist != null && !defaultPlaylist.isBlank()) {
+            if (settingsService.getScopeTier().canInsertPlaylist()
+                    && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                 job.setPlaylistId(defaultPlaylist);
             }
             job.setFileSizeBytes(file.getSize());
