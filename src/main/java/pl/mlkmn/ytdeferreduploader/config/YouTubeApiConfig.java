@@ -12,11 +12,10 @@ import java.util.List;
 @Configuration
 public class YouTubeApiConfig {
 
-    public static final List<String> SCOPES = List.of(
-            "https://www.googleapis.com/auth/youtube.upload",
-            "https://www.googleapis.com/auth/youtube",
-            "https://www.googleapis.com/auth/drive"    // read + delete files from Drive
-    );
+    @FunctionalInterface
+    public interface AuthFlowFactory {
+        GoogleAuthorizationCodeFlow buildFlow(List<String> scopes);
+    }
 
     @Bean
     public NetHttpTransport httpTransport() {
@@ -29,19 +28,21 @@ public class YouTubeApiConfig {
     }
 
     @Bean
-    public GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow(
+    public AuthFlowFactory authFlowFactory(
             AppProperties appProperties, NetHttpTransport httpTransport, GsonFactory jsonFactory) {
-        var ytProps = appProperties.getYoutube();
+        return scopes -> {
+            var ytProps = appProperties.getYoutube();
 
-        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details()
-                .setClientId(ytProps.getClientId())
-                .setClientSecret(ytProps.getClientSecret());
-        GoogleClientSecrets clientSecrets = new GoogleClientSecrets().setWeb(details);
+            GoogleClientSecrets.Details details = new GoogleClientSecrets.Details()
+                    .setClientId(ytProps.getClientId())
+                    .setClientSecret(ytProps.getClientSecret());
+            GoogleClientSecrets clientSecrets = new GoogleClientSecrets().setWeb(details);
 
-        return new GoogleAuthorizationCodeFlow.Builder(
-                httpTransport, jsonFactory, clientSecrets, SCOPES)
-                .setAccessType("offline")
-                .setApprovalPrompt("force")
-                .build();
+            return new GoogleAuthorizationCodeFlow.Builder(
+                    httpTransport, jsonFactory, clientSecrets, scopes)
+                    .setAccessType("offline")
+                    .setApprovalPrompt("force")
+                    .build();
+        };
     }
 }

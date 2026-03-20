@@ -1,23 +1,33 @@
 package pl.mlkmn.ytdeferreduploader.controller;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.services.drive.model.File;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
+import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
+import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -28,6 +38,9 @@ public class QueueController {
     private final UploadJobRepository uploadJobRepository;
     private final SettingsService settingsService;
     private final GoogleDriveService driveService;
+    private final AppProperties appProperties;
+    private final TitleGenerator titleGenerator;
+    private final YouTubeCredentialService credentialService;
 
     @GetMapping("/")
     public String root() {
@@ -40,8 +53,23 @@ public class QueueController {
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
-        String folderId = getConfiguredFolderId();
-        model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+
+        boolean hostedMode = appProperties.isHostedMode();
+        model.addAttribute("hostedMode", hostedMode);
+
+        if (hostedMode) {
+            model.addAttribute("pickerApiKey", appProperties.getGoogle().getPickerApiKey());
+            model.addAttribute("clientId", appProperties.getYoutube().getClientId());
+            // Provide a fresh OAuth access token for the Picker
+            String accessToken = credentialService.getCredential()
+                    .map(Credential::getAccessToken)
+                    .orElse("");
+            model.addAttribute("oauthAccessToken", accessToken);
+        } else {
+            String folderId = getConfiguredFolderId();
+            model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+        }
+
         return "queue";
     }
 
@@ -52,6 +80,87 @@ public class QueueController {
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
         return "queue :: jobTable";
+    }
+
+    @PostMapping("/queue/from-drive")
+    public ResponseEntity<Map<String, Object>> addFromDrive(@RequestBody Map<String, List<String>> body) {
+        List<String> fileIds = body.get("fileIds");
+        if (fileIds == null || fileIds.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "No file IDs provided"));
+        }
+
+        if (!credentialService.isConnected()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Google account not connected"));
+        }
+
+        String defaultDescription = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, "");
+        String defaultPrivacy = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE");
+        String defaultPlaylist = settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, "");
+
+        List<String> queued = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
+
+        for (String fileId : fileIds) {
+            if (uploadJobRepository.existsByDriveFileId(fileId)) {
+                skipped.add(fileId);
+                continue;
+            }
+
+            try {
+                File driveFile = driveService.getFileMetadata(fileId);
+
+                UploadJob job = new UploadJob();
+                job.setDriveFileId(driveFile.getId());
+                job.setDriveFileName(driveFile.getName());
+
+                Long driveModifiedMillis = driveFile.getModifiedTime() != null
+                        ? driveFile.getModifiedTime().getValue() : null;
+                job.setTitle(titleGenerator.generateFromFilename(driveFile.getName(), driveModifiedMillis));
+
+                job.setDescription(defaultDescription);
+                job.setPrivacyStatus(
+                        pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
+                if (settingsService.getScopeTier().canInsertPlaylist()
+                        && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
+                    job.setPlaylistId(defaultPlaylist);
+                }
+                job.setFileSizeBytes(driveFile.getSize());
+                job.setStatus(UploadStatus.PENDING);
+                job.setScheduledAt(Instant.now());
+
+                uploadJobRepository.save(job);
+                queued.add(driveFile.getName());
+                log.info("Drive file queued via Picker: jobId={}, driveFileId={}, name='{}', title='{}'",
+                        job.getId(), driveFile.getId(), driveFile.getName(), job.getTitle());
+
+            } catch (IOException e) {
+                log.error("Failed to fetch Drive file metadata: fileId={}, error={}", fileId, e.getMessage(), e);
+                errors.add(fileId);
+            }
+        }
+
+        String message;
+        if (!queued.isEmpty() && errors.isEmpty() && skipped.isEmpty()) {
+            message = queued.size() + " video(s) added to queue.";
+        } else if (!queued.isEmpty()) {
+            message = queued.size() + " video(s) added to queue.";
+            if (!skipped.isEmpty()) message += " " + skipped.size() + " already in queue.";
+            if (!errors.isEmpty()) message += " " + errors.size() + " failed.";
+        } else if (!skipped.isEmpty()) {
+            message = "All selected videos are already in the queue.";
+        } else {
+            message = "Failed to add videos to queue.";
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", message,
+                "queued", queued.size(),
+                "skipped", skipped.size(),
+                "errors", errors.size()
+        ));
     }
 
     @PostMapping("/queue/{id}/cancel")

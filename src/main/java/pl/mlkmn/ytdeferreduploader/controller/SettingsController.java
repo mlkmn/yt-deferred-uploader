@@ -2,6 +2,7 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.AccountDeletionService;
+import pl.mlkmn.ytdeferreduploader.config.YouTubeApiConfig.AuthFlowFactory;
+import pl.mlkmn.ytdeferreduploader.model.ScopeTier;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
@@ -23,7 +26,7 @@ import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 public class SettingsController {
 
     private final SettingsService settingsService;
-    private final GoogleAuthorizationCodeFlow authFlow;
+    private final AuthFlowFactory authFlowFactory;
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
     private final QuotaTracker quotaTracker;
@@ -42,21 +45,38 @@ public class SettingsController {
         model.addAttribute("youtubeConnected", youtubeConnected);
         model.addAttribute("defaultPlaylist",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+
+        ScopeTier scopeTier = settingsService.getScopeTier();
+        model.addAttribute("scopeTier", scopeTier.name());
+        model.addAttribute("canInsertPlaylist", scopeTier.canInsertPlaylist());
+
         if (youtubeConnected) {
             playlistService.getChannel().ifPresent(ch ->
                     model.addAttribute("channelTitle", ch.getSnippet().getTitle()));
-            model.addAttribute("playlists", playlistService.getUserPlaylists());
+            if (scopeTier.canInsertPlaylist()) {
+                model.addAttribute("playlists", playlistService.getUserPlaylists());
+            }
         }
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
 
         return "settings";
     }
 
+    private static final List<String> HOSTED_SCOPES = List.of(
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/drive.file"
+    );
+
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
+        List<String> scopes = appProperties.isHostedMode()
+                ? HOSTED_SCOPES
+                : settingsService.getScopeTier().getScopes();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(scopes);
         String redirectUri = appProperties.getYoutube().getRedirectUri();
-        log.info("OAuth connect initiated: redirectUri={}", redirectUri);
-        String authUrl = authFlow.newAuthorizationUrl()
+        log.info("OAuth connect initiated: redirectUri={}, hostedMode={}", redirectUri, appProperties.isHostedMode());
+        String authUrl = flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .build();
         log.info("Redirecting to Google OAuth: url={}", authUrl);
@@ -66,10 +86,14 @@ public class SettingsController {
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
+        List<String> scopes = appProperties.isHostedMode()
+                ? HOSTED_SCOPES
+                : settingsService.getScopeTier().getScopes();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(scopes);
         String redirectUri = appProperties.getYoutube().getRedirectUri();
         log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
-            GoogleTokenResponse tokenResponse = authFlow.newTokenRequest(code)
+            GoogleTokenResponse tokenResponse = flow.newTokenRequest(code)
                     .setRedirectUri(redirectUri)
                     .execute();
             log.info("OAuth token exchange successful: hasAccessToken={}, hasRefreshToken={}, expiresIn={}",
@@ -97,6 +121,27 @@ public class SettingsController {
         settingsService.delete(SettingsService.KEY_OAUTH_TOKEN_EXPIRY);
         settingsService.delete(SettingsService.KEY_DRIVE_FOLDER);
         redirectAttributes.addFlashAttribute("success", "YouTube account disconnected");
+        return "redirect:/settings";
+    }
+
+    @PostMapping("/settings/scope-tier")
+    public String saveScopeTier(@RequestParam("scopeTier") String scopeTier,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            ScopeTier tier = ScopeTier.valueOf(scopeTier);
+            ScopeTier currentTier = settingsService.getScopeTier();
+            settingsService.set(SettingsService.KEY_SCOPE_TIER, tier.name());
+
+            boolean isConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+            if (isConnected && tier != currentTier) {
+                redirectAttributes.addFlashAttribute("warning",
+                        "Scope tier changed. Please disconnect and reconnect your YouTube account for the new permissions to take effect.");
+            } else {
+                redirectAttributes.addFlashAttribute("success", "Scope tier saved");
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", "Invalid scope tier");
+        }
         return "redirect:/settings";
     }
 
