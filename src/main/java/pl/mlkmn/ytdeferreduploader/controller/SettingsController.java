@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.service.AccountDeletionService;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
@@ -26,6 +27,7 @@ public class SettingsController {
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
     private final QuotaTracker quotaTracker;
+    private final AccountDeletionService accountDeletionService;
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
@@ -127,6 +129,20 @@ public class SettingsController {
         settingsService.set(SettingsService.KEY_DRIVE_FOLDER, driveFolder != null ? driveFolder : "");
 
         redirectAttributes.addFlashAttribute("success", "Settings saved");
+        return "redirect:/settings";
+    }
+
+    @PostMapping("/settings/delete-account")
+    public String deleteAccount(RedirectAttributes redirectAttributes) {
+        try {
+            accountDeletionService.deleteAllUserData();
+            redirectAttributes.addFlashAttribute("success",
+                    "All account data has been deleted. Your OAuth token has been revoked with Google.");
+        } catch (Exception e) {
+            log.error("Account deletion failed", e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Account deletion failed: " + e.getMessage());
+        }
         return "redirect:/settings";
     }
 }
