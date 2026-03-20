@@ -114,8 +114,8 @@ public class UploadScheduler {
         if (!job.isDriveJob()) {
             return;
         }
-        if (!settingsService.getScopeTier().canTrashDriveFiles()) {
-            log.info("Skipping Drive trash (Basic scope tier): jobId={}, driveFileId={}",
+        if (appProperties.isHostedMode() || !settingsService.getScopeTier().canTrashDriveFiles()) {
+            log.info("Skipping Drive trash (hosted mode or insufficient scope): jobId={}, driveFileId={}",
                     job.getId(), job.getDriveFileId());
             return;
         }
@@ -165,8 +165,8 @@ public class UploadScheduler {
         if (playlistId == null || playlistId.isBlank()) {
             return;
         }
-        if (!settingsService.getScopeTier().canInsertPlaylist()) {
-            log.info("Skipping playlist insertion (Basic scope tier): jobId={}", job.getId());
+        if (appProperties.isHostedMode() || !settingsService.getScopeTier().canInsertPlaylist()) {
+            log.info("Skipping playlist insertion (hosted mode or insufficient scope): jobId={}", job.getId());
             return;
         }
 
