@@ -1,5 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.controller;
 
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.services.drive.model.File;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +60,10 @@ public class QueueController {
         if (hostedMode) {
             model.addAttribute("pickerApiKey", appProperties.getGoogle().getPickerApiKey());
             model.addAttribute("clientId", appProperties.getYoutube().getClientId());
-            // Provide the OAuth access token for the Picker
-            String accessToken = settingsService.getOrDefault(SettingsService.KEY_OAUTH_ACCESS_TOKEN, "");
+            // Provide a fresh OAuth access token for the Picker
+            String accessToken = credentialService.getCredential()
+                    .map(Credential::getAccessToken)
+                    .orElse("");
             model.addAttribute("oauthAccessToken", accessToken);
         } else {
             String folderId = getConfiguredFolderId();

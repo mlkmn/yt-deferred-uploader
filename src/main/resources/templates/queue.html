@@ -191,8 +191,9 @@
 
                 await loadPickerApi();
 
-                const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
-                    .setMimeTypes('video/*')
+                const view = new google.picker.DocsView()
+                    .setIncludeFolders(true)
+                    .setMimeTypes('video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,video/3gpp,video/x-flv,video/mpeg')
                     .setMode(google.picker.DocsViewMode.LIST);
 
                 const picker = new google.picker.PickerBuilder()
