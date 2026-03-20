@@ -1,4 +1,5 @@
 app:
+  mode: ${APP_MODE:hosted}
   upload-dir: ./uploads
   max-file-size-mb: 500
   youtube:

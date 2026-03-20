@@ -11,6 +11,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 
@@ -28,6 +29,7 @@ public class QueueController {
     private final UploadJobRepository uploadJobRepository;
     private final SettingsService settingsService;
     private final GoogleDriveService driveService;
+    private final AppProperties appProperties;
 
     @GetMapping("/")
     public String root() {
@@ -40,8 +42,11 @@ public class QueueController {
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
-        String folderId = getConfiguredFolderId();
-        model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+        model.addAttribute("appMode", appProperties.getMode());
+        if (appProperties.getMode().canPollDrive()) {
+            String folderId = getConfiguredFolderId();
+            model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+        }
         return "queue";
     }
 

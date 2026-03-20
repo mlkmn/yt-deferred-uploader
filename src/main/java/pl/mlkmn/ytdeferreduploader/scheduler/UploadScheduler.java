@@ -79,8 +79,12 @@ public class UploadScheduler {
             log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
                     job.getId(), youtubeId, job.getTitle());
 
-            addToPlaylistIfConfigured(job);
-            deleteFromDriveIfApplicable(job);
+            if (appProperties.getMode().canInsertPlaylist()) {
+                addToPlaylistIfConfigured(job);
+            }
+            if (appProperties.getMode().canTrashDriveFiles()) {
+                deleteFromDriveIfApplicable(job);
+            }
         } catch (UploadException e) {
             handleUploadError(job, e);
         } catch (Exception e) {

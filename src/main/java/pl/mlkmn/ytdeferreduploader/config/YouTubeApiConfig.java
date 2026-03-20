@@ -4,19 +4,13 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
-
+@Slf4j
 @Configuration
 public class YouTubeApiConfig {
-
-    public static final List<String> SCOPES = List.of(
-            "https://www.googleapis.com/auth/youtube.upload",
-            "https://www.googleapis.com/auth/youtube",
-            "https://www.googleapis.com/auth/drive"    // read + delete files from Drive
-    );
 
     @Bean
     public NetHttpTransport httpTransport() {
@@ -32,6 +26,9 @@ public class YouTubeApiConfig {
     public GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow(
             AppProperties appProperties, NetHttpTransport httpTransport, GsonFactory jsonFactory) {
         var ytProps = appProperties.getYoutube();
+        AppMode mode = appProperties.getMode();
+
+        log.info("Configuring OAuth flow: mode={}, scopes={}", mode, mode.getScopes());
 
         GoogleClientSecrets.Details details = new GoogleClientSecrets.Details()
                 .setClientId(ytProps.getClientId())
@@ -39,7 +36,7 @@ public class YouTubeApiConfig {
         GoogleClientSecrets clientSecrets = new GoogleClientSecrets().setWeb(details);
 
         return new GoogleAuthorizationCodeFlow.Builder(
-                httpTransport, jsonFactory, clientSecrets, SCOPES)
+                httpTransport, jsonFactory, clientSecrets, mode.getScopes())
                 .setAccessType("offline")
                 .setApprovalPrompt("force")
                 .build();

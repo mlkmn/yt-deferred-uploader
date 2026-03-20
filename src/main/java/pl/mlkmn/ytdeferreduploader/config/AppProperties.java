@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 @Setter
 public class AppProperties {
 
+    private AppMode mode = AppMode.HOSTED;
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
     private String encryptionKey;
