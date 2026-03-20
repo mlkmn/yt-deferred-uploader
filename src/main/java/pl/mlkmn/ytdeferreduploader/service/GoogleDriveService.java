@@ -75,6 +75,20 @@ public class GoogleDriveService {
     }
 
     /**
+     * Fetches metadata for a single file by ID.
+     * Returns id, name, size, mimeType, and modifiedTime.
+     */
+    public File getFileMetadata(String fileId) throws IOException {
+        Credential credential = credentialService.getCredential()
+                .orElseThrow(() -> new IOException("YouTube/Drive account not connected"));
+
+        Drive drive = buildClient(credential);
+        return drive.files().get(fileId)
+                .setFields("id, name, size, mimeType, modifiedTime")
+                .execute();
+    }
+
+    /**
      * Opens an InputStream to download the file content directly from Drive.
      * Caller is responsible for closing the stream.
      */

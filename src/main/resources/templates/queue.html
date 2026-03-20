@@ -14,8 +14,14 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Upload Queue</h4>
-        <span th:if="${driveFolderPath}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
-        <span th:unless="${driveFolderPath}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
+        <!--/* Hosted mode: show Pick from Drive button */-->
+        <button th:if="${hostedMode}" type="button" class="btn btn-primary btn-sm" id="pickFromDriveBtn"
+                onclick="openPicker()">
+            <i class="bi bi-cloud-arrow-up me-1"></i>Pick from Drive
+        </button>
+        <!--/* Self-hosted mode: show polling status */-->
+        <span th:if="${!hostedMode and driveFolderPath}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
+        <span th:if="${!hostedMode and !driveFolderPath}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
@@ -26,7 +32,8 @@
          hx-swap="outerHTML">
 
         <div th:if="${#lists.isEmpty(jobs)}" class="text-muted text-center py-5">
-            No jobs yet. Add videos to your Google Drive folder to get started.
+            <span th:if="${hostedMode}">Pick videos from Google Drive to get started.</span>
+            <span th:unless="${hostedMode}">No jobs yet. Add videos to your Google Drive folder to get started.</span>
         </div>
 
         <div class="table-responsive" th:unless="${#lists.isEmpty(jobs)}">
@@ -142,6 +149,115 @@
             window.jobStatuses = newStatuses;
         });
     </script>
+
+    <!--/* Google Picker integration — only loaded in hosted mode */-->
+    <th:block th:if="${hostedMode}">
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const PICKER_API_KEY = /*[[${pickerApiKey}]]*/ '';
+        const CLIENT_ID = /*[[${clientId}]]*/ '';
+        const OAUTH_TOKEN = /*[[${oauthAccessToken}]]*/ '';
+        const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+        let pickerApiLoaded = false;
+
+        function loadPickerApi() {
+            return new Promise((resolve, reject) => {
+                if (pickerApiLoaded) {
+                    resolve();
+                    return;
+                }
+                gapi.load('picker', {
+                    callback: () => {
+                        pickerApiLoaded = true;
+                        resolve();
+                    },
+                    onerror: () => reject(new Error('Failed to load Google Picker API'))
+                });
+            });
+        }
+
+        async function openPicker() {
+            const btn = document.getElementById('pickFromDriveBtn');
+            btn.disabled = true;
+
+            try {
+                if (!OAUTH_TOKEN) {
+                    showToast('Google account not connected. Please connect in Settings first.', 'error');
+                    return;
+                }
+
+                await loadPickerApi();
+
+                const view = new google.picker.DocsView(google.picker.ViewId.DOCS)
+                    .setMimeTypes('video/*')
+                    .setMode(google.picker.DocsViewMode.LIST);
+
+                const picker = new google.picker.PickerBuilder()
+                    .setAppId(CLIENT_ID.split('-')[0])
+                    .setOAuthToken(OAUTH_TOKEN)
+                    .setDeveloperKey(PICKER_API_KEY)
+                    .addView(view)
+                    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                    .setTitle('Select videos to upload')
+                    .setCallback(pickerCallback)
+                    .build();
+
+                picker.setVisible(true);
+            } catch (err) {
+                console.error('Picker error:', err);
+                showToast('Failed to open Google Picker: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function pickerCallback(data) {
+            if (data.action === google.picker.Action.PICKED) {
+                const fileIds = data.docs.map(doc => doc.id);
+                submitDriveFiles(fileIds);
+            }
+        }
+
+        async function submitDriveFiles(fileIds) {
+            const btn = document.getElementById('pickFromDriveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
+
+            try {
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                headers[CSRF_HEADER] = CSRF_TOKEN;
+
+                const response = await fetch('/queue/from-drive', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ fileIds: fileIds })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showToast(result.message, result.errors > 0 ? 'error' : 'success');
+                    // Reload the page to show new jobs
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    showToast(result.error || 'Failed to add videos.', 'error');
+                }
+            } catch (err) {
+                console.error('Submit error:', err);
+                showToast('Failed to add videos to queue.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-arrow-up me-1"></i>Pick from Drive';
+            }
+        }
+        /*]]>*/
+    </script>
+    </th:block>
 
 </div>
 </body>
