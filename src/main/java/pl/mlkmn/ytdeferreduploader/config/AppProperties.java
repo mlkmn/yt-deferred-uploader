@@ -11,14 +11,26 @@ import org.springframework.stereotype.Component;
 @Setter
 public class AppProperties {
 
+    private String mode = "hosted";
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
     private String encryptionKey;
+    private Google google = new Google();
     private YouTube youtube = new YouTube();
     private Scheduler scheduler = new Scheduler();
     private Admin admin = new Admin();
     private Cleanup cleanup = new Cleanup();
     private Drive drive = new Drive();
+
+    public boolean isHostedMode() {
+        return "hosted".equalsIgnoreCase(mode);
+    }
+
+    @Getter
+    @Setter
+    public static class Google {
+        private String pickerApiKey = "";
+    }
 
     @Getter
     @Setter

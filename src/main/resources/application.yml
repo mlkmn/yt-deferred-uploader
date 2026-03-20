@@ -1,6 +1,9 @@
 app:
+  mode: ${APP_MODE:hosted}
   upload-dir: ./uploads
   max-file-size-mb: 500
+  google:
+    picker-api-key: ${GOOGLE_PICKER_API_KEY:}
   youtube:
     client-id: ${YOUTUBE_CLIENT_ID:}
     client-secret: ${YOUTUBE_CLIENT_SECRET:}

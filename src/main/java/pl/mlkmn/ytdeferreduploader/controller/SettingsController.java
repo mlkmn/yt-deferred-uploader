@@ -2,6 +2,7 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -59,12 +60,20 @@ public class SettingsController {
         return "settings";
     }
 
+    private static final List<String> HOSTED_SCOPES = List.of(
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/drive.file"
+    );
+
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
-        ScopeTier tier = settingsService.getScopeTier();
-        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(tier.getScopes());
+        List<String> scopes = appProperties.isHostedMode()
+                ? HOSTED_SCOPES
+                : settingsService.getScopeTier().getScopes();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(scopes);
         String redirectUri = appProperties.getYoutube().getRedirectUri();
-        log.info("OAuth connect initiated: redirectUri={}, scopeTier={}", redirectUri, tier);
+        log.info("OAuth connect initiated: redirectUri={}, hostedMode={}", redirectUri, appProperties.isHostedMode());
         String authUrl = flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .build();
@@ -75,8 +84,10 @@ public class SettingsController {
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
-        ScopeTier tier = settingsService.getScopeTier();
-        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(tier.getScopes());
+        List<String> scopes = appProperties.isHostedMode()
+                ? HOSTED_SCOPES
+                : settingsService.getScopeTier().getScopes();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(scopes);
         String redirectUri = appProperties.getYoutube().getRedirectUri();
         log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
