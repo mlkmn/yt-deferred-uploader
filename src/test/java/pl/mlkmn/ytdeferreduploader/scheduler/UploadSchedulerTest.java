@@ -9,7 +9,7 @@ import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
-import pl.mlkmn.ytdeferreduploader.model.ScopeTier;
+import pl.mlkmn.ytdeferreduploader.config.AppMode;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
@@ -46,7 +46,7 @@ class UploadSchedulerTest {
         appProperties = new AppProperties();
         appProperties.getScheduler().setMaxRetries(3);
         appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
-        lenient().when(settingsService.getScopeTier()).thenReturn(ScopeTier.EXTENDED);
+        appProperties.setMode(AppMode.SELF_HOSTED);
         scheduler = new UploadScheduler(jobRepository, uploadService,
                 credentialService, playlistService, driveService, quotaTracker, appProperties,
                 settingsService);

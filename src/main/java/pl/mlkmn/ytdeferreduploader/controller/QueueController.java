@@ -16,6 +16,7 @@ import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
+import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
@@ -53,23 +54,21 @@ public class QueueController {
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", jobs.stream()
                 .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        var appMode = appProperties.getMode();
+        model.addAttribute("appMode", appMode);
 
-        boolean hostedMode = appProperties.isHostedMode();
-        model.addAttribute("hostedMode", hostedMode);
-
-        if (hostedMode) {
+        if (appMode.usesGooglePicker()) {
             model.addAttribute("pickerApiKey", appProperties.getGoogle().getPickerApiKey());
             model.addAttribute("clientId", appProperties.getYoutube().getClientId());
-            // Provide a fresh OAuth access token for the Picker
             String accessToken = credentialService.getCredential()
                     .map(Credential::getAccessToken)
                     .orElse("");
             model.addAttribute("oauthAccessToken", accessToken);
-        } else {
+        }
+        if (appMode.canPollDrive()) {
             String folderId = getConfiguredFolderId();
             model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
         }
-
         return "queue";
     }
 
@@ -123,7 +122,7 @@ public class QueueController {
                 job.setDescription(defaultDescription);
                 job.setPrivacyStatus(
                         pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
-                if (settingsService.getScopeTier().canInsertPlaylist()
+                if (appProperties.getMode().canInsertPlaylist()
                         && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                     job.setPlaylistId(defaultPlaylist);
                 }

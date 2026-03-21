@@ -15,13 +15,15 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Upload Queue</h4>
         <!--/* Hosted mode: show Pick from Drive button */-->
-        <button th:if="${hostedMode}" type="button" class="btn btn-primary btn-sm" id="pickFromDriveBtn"
+        <button th:if="${appMode.usesGooglePicker()}" type="button" class="btn btn-primary btn-sm" id="pickFromDriveBtn"
                 onclick="openPicker()">
             <i class="bi bi-cloud-arrow-up me-1"></i>Pick from Drive
         </button>
         <!--/* Self-hosted mode: show polling status */-->
-        <span th:if="${!hostedMode and driveFolderPath}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
-        <span th:if="${!hostedMode and !driveFolderPath}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
+        <th:block th:if="${appMode.canPollDrive()}">
+            <span th:if="${driveFolderPath}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
+            <span th:unless="${driveFolderPath}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
+        </th:block>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
@@ -32,8 +34,8 @@
          hx-swap="outerHTML">
 
         <div th:if="${#lists.isEmpty(jobs)}" class="text-muted text-center py-5">
-            <span th:if="${hostedMode}">Pick videos from Google Drive to get started.</span>
-            <span th:unless="${hostedMode}">No jobs yet. Add videos to your Google Drive folder to get started.</span>
+            <span th:if="${appMode.usesGooglePicker()}">Pick videos from Google Drive to get started.</span>
+            <span th:if="${appMode.canPollDrive()}">No jobs yet. Add videos to your Google Drive folder to get started.</span>
         </div>
 
         <div class="table-responsive" th:unless="${#lists.isEmpty(jobs)}">
@@ -151,7 +153,7 @@
     </script>
 
     <!--/* Google Picker integration — only loaded in hosted mode */-->
-    <th:block th:if="${hostedMode}">
+    <th:block th:if="${appMode.usesGooglePicker()}">
     <script src="https://apis.google.com/js/api.js"></script>
     <script th:inline="javascript">
         /*<![CDATA[*/

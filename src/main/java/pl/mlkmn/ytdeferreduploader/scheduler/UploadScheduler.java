@@ -81,8 +81,12 @@ public class UploadScheduler {
             log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
                     job.getId(), youtubeId, job.getTitle());
 
-            addToPlaylistIfConfigured(job);
-            deleteFromDriveIfApplicable(job);
+            if (appProperties.getMode().canInsertPlaylist()) {
+                addToPlaylistIfConfigured(job);
+            }
+            if (appProperties.getMode().canTrashDriveFiles()) {
+                deleteFromDriveIfApplicable(job);
+            }
         } catch (UploadException e) {
             handleUploadError(job, e);
         } catch (Exception e) {
@@ -114,8 +118,9 @@ public class UploadScheduler {
         if (!job.isDriveJob()) {
             return;
         }
-        if (appProperties.isHostedMode() || !settingsService.getScopeTier().canTrashDriveFiles()) {
-            log.info("Skipping Drive trash (hosted mode or insufficient scope): jobId={}, driveFileId={}",
+        if (!appProperties.getMode().canTrashDriveFiles()) {
+            log.info("Skipping Drive trash (not available in {} mode): jobId={}, driveFileId={}",
+                    appProperties.getMode(),
                     job.getId(), job.getDriveFileId());
             return;
         }
@@ -165,8 +170,8 @@ public class UploadScheduler {
         if (playlistId == null || playlistId.isBlank()) {
             return;
         }
-        if (appProperties.isHostedMode() || !settingsService.getScopeTier().canInsertPlaylist()) {
-            log.info("Skipping playlist insertion (hosted mode or insufficient scope): jobId={}", job.getId());
+        if (!appProperties.getMode().canInsertPlaylist()) {
+            log.info("Skipping playlist insertion (not available in {} mode): jobId={}", appProperties.getMode(), job.getId());
             return;
         }
 

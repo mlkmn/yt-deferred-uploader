@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Setter
 public class AppProperties {
 
-    private String mode = "hosted";
+    private AppMode mode = AppMode.HOSTED;
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
     private String encryptionKey;
@@ -23,7 +23,7 @@ public class AppProperties {
     private Drive drive = new Drive();
 
     public boolean isHostedMode() {
-        return "hosted".equalsIgnoreCase(mode);
+        return mode == AppMode.HOSTED;
     }
 
     @Getter

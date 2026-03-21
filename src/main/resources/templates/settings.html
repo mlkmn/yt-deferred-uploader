@@ -17,41 +17,6 @@
     </div>
 
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">Permissions</h5></div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">Choose which Google API permissions to request.
-                        Changing this after connecting requires re-authentication.</p>
-                    <form method="post" th:action="@{/settings/scope-tier}">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="scopeTier"
-                                   id="scopeBasic" value="BASIC"
-                                   th:checked="${scopeTier == 'BASIC'}">
-                            <label class="form-check-label" for="scopeBasic">
-                                <strong>Basic</strong> (recommended)
-                                <small class="d-block text-muted">
-                                    Upload videos, read channel info and playlists, read Drive files.
-                                    Does not add videos to playlists or remove Drive files after upload.
-                                </small>
-                            </label>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="scopeTier"
-                                   id="scopeExtended" value="EXTENDED"
-                                   th:checked="${scopeTier == 'EXTENDED'}">
-                            <label class="form-check-label" for="scopeExtended">
-                                <strong>Extended</strong>
-                                <small class="d-block text-muted">
-                                    Everything above plus automatic playlist insertion
-                                    and Drive file removal after upload.
-                                </small>
-                            </label>
-                        </div>
-                        <button type="submit" class="btn btn-outline-primary btn-sm">Save Permissions</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">YouTube</h5></div>
                 <div class="card-body">
                     <div th:if="${youtubeConnected}" class="d-flex align-items-center justify-content-between mb-2">
@@ -78,7 +43,8 @@
                 <div class="card-body">
                     <form method="post" th:action="@{/settings}">
 
-                        <div class="mb-3">
+                        <!-- Drive folder: self-hosted only -->
+                        <div class="mb-3" th:if="${appMode.canPollDrive()}">
                             <label for="driveFolder" class="form-label">Google Drive folder</label>
                             <input type="text" class="form-control" id="driveFolder" name="driveFolder"
                                    th:value="${driveFolder}"
@@ -89,9 +55,6 @@
                             <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="form-text text-danger">
                                 Could not parse folder ID from the saved value.
                             </div>
-                            <small th:if="${scopeTier == 'BASIC'}" class="form-text text-info">
-                                Drive files will not be removed after upload (Basic permissions).
-                            </small>
                         </div>
 
                         <div class="mb-3">
@@ -109,7 +72,8 @@
                             </select>
                         </div>
 
-                        <div class="mb-3" th:if="${youtubeConnected and canInsertPlaylist}">
+                        <!-- Playlist selector: self-hosted only -->
+                        <div class="mb-3" th:if="${appMode.canListPlaylists() and youtubeConnected}">
                             <label for="defaultPlaylist" class="form-label">Default playlist</label>
                             <select class="form-select" id="defaultPlaylist" name="defaultPlaylist">
                                 <option value="">None</option>
