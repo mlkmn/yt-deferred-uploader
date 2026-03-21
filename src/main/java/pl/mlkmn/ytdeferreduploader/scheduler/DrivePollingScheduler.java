@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
@@ -13,8 +14,6 @@ import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
-
-import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 
 import java.time.Instant;
 import java.util.List;
@@ -77,8 +76,7 @@ public class DrivePollingScheduler {
             job.setTitle(titleGenerator.generateFromFilename(file.getName(), driveModifiedMillis));
 
             job.setDescription(defaultDescription);
-            job.setPrivacyStatus(
-                    pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
+            job.setPrivacyStatus(PrivacyStatus.fromString(defaultPrivacy));
             if (appProperties.getMode().canInsertPlaylist()
                     && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                 job.setPlaylistId(defaultPlaylist);
@@ -97,4 +95,5 @@ public class DrivePollingScheduler {
             log.info("Drive poll complete: newJobs={}, totalFilesInFolder={}", created, videoFiles.size());
         }
     }
+
 }

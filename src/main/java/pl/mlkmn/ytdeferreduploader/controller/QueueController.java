@@ -21,6 +21,8 @@ import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 
+import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -123,8 +125,7 @@ public class QueueController {
                 job.setTitle(titleGenerator.generateFromFilename(driveFile.getName(), driveModifiedMillis));
 
                 job.setDescription(defaultDescription);
-                job.setPrivacyStatus(
-                        pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
+                job.setPrivacyStatus(PrivacyStatus.fromString(defaultPrivacy));
                 if (appProperties.getMode().canInsertPlaylist()
                         && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                     job.setPlaylistId(defaultPlaylist);
