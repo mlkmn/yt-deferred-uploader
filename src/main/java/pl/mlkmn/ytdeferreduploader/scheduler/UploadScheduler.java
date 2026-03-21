@@ -10,6 +10,7 @@ import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
+import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.UploadException;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
@@ -34,6 +35,7 @@ public class UploadScheduler {
     private final GoogleDriveService driveService;
     private final QuotaTracker quotaTracker;
     private final AppProperties appProperties;
+    private final SettingsService settingsService;
 
     @Scheduled(fixedDelayString = "${app.scheduler.poll-interval-ms}")
     public void pollAndUpload() {
@@ -116,6 +118,12 @@ public class UploadScheduler {
         if (!job.isDriveJob()) {
             return;
         }
+        if (!appProperties.getMode().canTrashDriveFiles()) {
+            log.info("Skipping Drive trash (not available in {} mode): jobId={}, driveFileId={}",
+                    appProperties.getMode(),
+                    job.getId(), job.getDriveFileId());
+            return;
+        }
         try {
             driveService.deleteFile(job.getDriveFileId());
             log.info("Deleted from Drive after upload: jobId={}, driveFileId={}",
@@ -160,6 +168,10 @@ public class UploadScheduler {
     private void addToPlaylistIfConfigured(UploadJob job) {
         String playlistId = job.getPlaylistId();
         if (playlistId == null || playlistId.isBlank()) {
+            return;
+        }
+        if (!appProperties.getMode().canInsertPlaylist()) {
+            log.info("Skipping playlist insertion (not available in {} mode): jobId={}", appProperties.getMode(), job.getId());
             return;
         }
 

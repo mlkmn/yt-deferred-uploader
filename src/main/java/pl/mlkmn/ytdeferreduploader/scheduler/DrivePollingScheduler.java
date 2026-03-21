@@ -11,6 +11,7 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
+import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
@@ -78,7 +79,8 @@ public class DrivePollingScheduler {
             job.setDescription(defaultDescription);
             job.setPrivacyStatus(
                     pl.mlkmn.ytdeferreduploader.model.PrivacyStatus.valueOf(defaultPrivacy.toUpperCase()));
-            if (defaultPlaylist != null && !defaultPlaylist.isBlank()) {
+            if (appProperties.getMode().canInsertPlaylist()
+                    && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                 job.setPlaylistId(defaultPlaylist);
             }
             job.setFileSizeBytes(file.getSize());

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppMode;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.service.AccountDeletionService;
+import pl.mlkmn.ytdeferreduploader.config.YouTubeApiConfig.AuthFlowFactory;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
@@ -23,10 +25,11 @@ import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 public class SettingsController {
 
     private final SettingsService settingsService;
-    private final GoogleAuthorizationCodeFlow authFlow;
+    private final AuthFlowFactory authFlowFactory;
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
     private final QuotaTracker quotaTracker;
+    private final AccountDeletionService accountDeletionService;
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
@@ -65,9 +68,11 @@ public class SettingsController {
 
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
+        AppMode mode = appProperties.getMode();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(mode.getScopes());
         String redirectUri = appProperties.getYoutube().getRedirectUri();
-        log.info("OAuth connect initiated: redirectUri={}", redirectUri);
-        String authUrl = authFlow.newAuthorizationUrl()
+        log.info("OAuth connect initiated: redirectUri={}, mode={}", redirectUri, mode);
+        String authUrl = flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .build();
         log.info("Redirecting to Google OAuth: url={}", authUrl);
@@ -77,10 +82,11 @@ public class SettingsController {
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(appProperties.getMode().getScopes());
         String redirectUri = appProperties.getYoutube().getRedirectUri();
         log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
-            GoogleTokenResponse tokenResponse = authFlow.newTokenRequest(code)
+            GoogleTokenResponse tokenResponse = flow.newTokenRequest(code)
                     .setRedirectUri(redirectUri)
                     .execute();
             log.info("OAuth token exchange successful: hasAccessToken={}, hasRefreshToken={}, expiresIn={}",
@@ -147,6 +153,20 @@ public class SettingsController {
         }
 
         redirectAttributes.addFlashAttribute("success", "Settings saved");
+        return "redirect:/settings";
+    }
+
+    @PostMapping("/settings/delete-account")
+    public String deleteAccount(RedirectAttributes redirectAttributes) {
+        try {
+            accountDeletionService.deleteAllUserData();
+            redirectAttributes.addFlashAttribute("success",
+                    "All account data has been deleted. Your OAuth token has been revoked with Google.");
+        } catch (Exception e) {
+            log.error("Account deletion failed", e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Account deletion failed: " + e.getMessage());
+        }
         return "redirect:/settings";
     }
 }

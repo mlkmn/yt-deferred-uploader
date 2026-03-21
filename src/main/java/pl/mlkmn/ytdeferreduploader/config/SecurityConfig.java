@@ -27,7 +27,7 @@ public class SecurityConfig {
         http
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/actuator/health").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/img/**", "/favicon.*", "/actuator/health", "/privacy", "/terms").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
