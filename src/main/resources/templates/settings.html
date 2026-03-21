@@ -26,7 +26,7 @@
                     </div>
                     <div th:unless="${youtubeConnected}" class="mb-2">
                         <p class="text-muted mb-2">No YouTube account linked.</p>
-                        <a th:href="@{/settings/oauth/connect}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
+                        <a th:href="@{/settings/oauth/consent}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
                     </div>
                     <div th:if="${youtubeConnected && quotaExhausted}" class="d-flex align-items-center justify-content-between">
                         <span class="text-danger">Quota exhausted — uploads paused</span>
@@ -48,11 +48,15 @@
                             <label for="driveFolder" class="form-label">Google Drive folder</label>
                             <input type="text" class="form-control" id="driveFolder" name="driveFolder"
                                    th:value="${driveFolder}"
+                                   th:disabled="${!youtubeConnected}"
                                    placeholder="https://drive.google.com/drive/folders/... or folder ID">
-                            <div th:if="${resolvedFolderId != null}" class="form-text text-success">
+                            <div th:unless="${youtubeConnected}" class="form-text text-muted">
+                                Connect a YouTube account first to configure Drive polling.
+                            </div>
+                            <div th:if="${youtubeConnected and resolvedFolderId != null}" class="form-text text-success">
                                 Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
                             </div>
-                            <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="form-text text-danger">
+                            <div th:if="${youtubeConnected and driveFolder != null and !driveFolder.isBlank() and resolvedFolderId == null}" class="form-text text-danger">
                                 Could not parse folder ID from the saved value.
                             </div>
                         </div>

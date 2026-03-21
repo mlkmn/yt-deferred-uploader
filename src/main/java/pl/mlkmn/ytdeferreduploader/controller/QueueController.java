@@ -16,7 +16,6 @@ import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
-import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
@@ -66,8 +65,12 @@ public class QueueController {
             model.addAttribute("oauthAccessToken", accessToken);
         }
         if (appMode.canPollDrive()) {
-            String folderId = getConfiguredFolderId();
-            model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+            boolean connected = credentialService.isConnected();
+            model.addAttribute("youtubeConnected", connected);
+            if (connected) {
+                String folderId = getConfiguredFolderId();
+                model.addAttribute("driveFolderPath", folderId != null ? driveService.getFolderPath(folderId) : null);
+            }
         }
         return "queue";
     }

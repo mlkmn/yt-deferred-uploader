@@ -21,8 +21,9 @@
         </button>
         <!--/* Self-hosted mode: show polling status */-->
         <th:block th:if="${appMode.canPollDrive()}">
-            <span th:if="${driveFolderPath}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
-            <span th:unless="${driveFolderPath}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
+            <span th:if="${driveFolderPath != null}" class="text-muted small">Polling <strong th:text="${driveFolderPath}"></strong></span>
+            <span th:if="${youtubeConnected == true and driveFolderPath == null}" class="text-muted small">No Drive folder configured — <a th:href="@{/settings}">set one in Settings</a></span>
+            <span th:if="${youtubeConnected != true}" class="text-muted small">Connect a YouTube account to start polling — <a th:href="@{/settings}">Settings</a></span>
         </th:block>
     </div>
 

@@ -68,6 +68,12 @@ public class SettingsController {
         return "settings";
     }
 
+    @GetMapping("/settings/oauth/consent")
+    public String showOAuthConsent(Model model) {
+        model.addAttribute("appMode", appProperties.getMode());
+        return "oauth-consent";
+    }
+
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
         AppMode mode = appProperties.getMode();
@@ -143,8 +149,9 @@ public class SettingsController {
             settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
         }
 
-        // Validate and save Drive folder (self-hosted only)
-        if (mode.canPollDrive()) {
+        // Validate and save Drive folder (self-hosted only, requires connected account)
+        boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+        if (mode.canPollDrive() && youtubeConnected) {
             if (driveFolder != null && !driveFolder.isBlank()) {
                 String folderId = GoogleDriveService.extractFolderId(driveFolder);
                 if (folderId == null) {
