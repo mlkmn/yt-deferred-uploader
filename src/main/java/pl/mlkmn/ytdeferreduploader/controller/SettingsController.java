@@ -62,6 +62,8 @@ public class SettingsController {
         }
 
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
+        model.addAttribute("jobRetentionDays",
+                settingsService.getOrDefault(SettingsService.KEY_JOB_RETENTION_DAYS, "30"));
 
         return "settings";
     }
@@ -128,12 +130,14 @@ public class SettingsController {
     public String saveSettings(@RequestParam("defaultDescription") String defaultDescription,
                                @RequestParam("defaultPrivacy") String defaultPrivacy,
                                @RequestParam(value = "defaultPlaylist", required = false) String defaultPlaylist,
+                               @RequestParam(value = "jobRetentionDays", required = false) String jobRetentionDays,
                                @RequestParam(value = "driveFolder", required = false) String driveFolder,
                                RedirectAttributes redirectAttributes) {
         AppMode mode = appProperties.getMode();
 
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
+        settingsService.set(SettingsService.KEY_JOB_RETENTION_DAYS, jobRetentionDays != null ? jobRetentionDays : "30");
 
         if (mode.canListPlaylists()) {
             settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");

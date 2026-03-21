@@ -72,6 +72,22 @@
                             </select>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="jobRetentionDays" class="form-label">Job history retention</label>
+                            <div class="input-group" style="max-width: 420px;">
+                                <input type="number" class="form-control" id="jobRetentionDays" name="jobRetentionDays" style="min-width: 80px;"
+                                       th:value="${jobRetentionDays}" min="0"
+                                       placeholder="30">
+                                <span class="input-group-text">days</span>
+                                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('jobRetentionDays').value='0'">Keep forever</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('jobRetentionDays').value='-1'">Delete now</button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Completed, failed, and cancelled jobs are automatically deleted after this period.
+                                Use 0 to keep forever, or -1 to delete all finished jobs immediately.
+                            </small>
+                        </div>
+
                         <!-- Playlist selector: self-hosted only -->
                         <div class="mb-3" th:if="${appMode.canListPlaylists() and youtubeConnected}">
                             <label for="defaultPlaylist" class="form-label">Default playlist</label>

@@ -3,7 +3,6 @@ package pl.mlkmn.ytdeferreduploader.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.model.AppSetting;
-import pl.mlkmn.ytdeferreduploader.model.ScopeTier;
 import pl.mlkmn.ytdeferreduploader.repository.AppSettingRepository;
 
 import java.util.Optional;
@@ -19,7 +18,7 @@ public class SettingsService {
     public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
     public static final String KEY_OAUTH_TOKEN_EXPIRY = "oauth_token_expiry_seconds";
     public static final String KEY_DRIVE_FOLDER = "drive_folder";
-    public static final String KEY_SCOPE_TIER = "scope_tier";
+    public static final String KEY_JOB_RETENTION_DAYS = "job_retention_days";
 
     private final AppSettingRepository appSettingRepository;
 
@@ -42,12 +41,4 @@ public class SettingsService {
         appSettingRepository.deleteById(key);
     }
 
-    public ScopeTier getScopeTier() {
-        return get(KEY_SCOPE_TIER)
-                .map(v -> {
-                    try { return ScopeTier.valueOf(v); }
-                    catch (IllegalArgumentException e) { return ScopeTier.BASIC; }
-                })
-                .orElse(ScopeTier.BASIC);
-    }
 }
