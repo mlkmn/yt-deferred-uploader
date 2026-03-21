@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: html}" th:with="view='oauth-consent',activePage='settings',pageTitle='Connect YouTube'">
+<body>
+<div th:fragment="content">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0">Permissions we'll request</h5></div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Before connecting, here's what we'll ask Google for and why:</p>
+
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-3">
+                            <i class="bi bi-cloud-arrow-up me-2 text-primary"></i>
+                            <strong>Upload videos</strong>
+                            <small class="d-block text-muted ms-4">To publish your queued videos to YouTube.</small>
+                        </li>
+                        <li class="mb-3">
+                            <i class="bi bi-person-circle me-2 text-primary"></i>
+                            <strong>View your channel info</strong>
+                            <small class="d-block text-muted ms-4">To display your connected channel name in Settings.</small>
+                        </li>
+                        <li class="mb-3" th:if="${appMode.usesGooglePicker()}">
+                            <i class="bi bi-folder2-open me-2 text-primary"></i>
+                            <strong>Access files you select</strong>
+                            <small class="d-block text-muted ms-4">To download videos you pick from Google Drive. We only access files you explicitly choose.</small>
+                        </li>
+                        <li class="mb-3" th:if="${appMode.canPollDrive()}">
+                            <i class="bi bi-folder2-open me-2 text-primary"></i>
+                            <strong>Access Google Drive</strong>
+                            <small class="d-block text-muted ms-4">To poll your configured folder for new videos and optionally remove files after upload.</small>
+                        </li>
+                        <li class="mb-3" th:if="${appMode.canListPlaylists()}">
+                            <i class="bi bi-music-note-list me-2 text-primary"></i>
+                            <strong>Manage playlists</strong>
+                            <small class="d-block text-muted ms-4">To list your playlists and add uploaded videos to them.</small>
+                        </li>
+                    </ul>
+
+                    <div class="alert alert-secondary mb-4" th:if="${appMode.usesGooglePicker()}">
+                        <small>We will never browse your Drive, access your playlists, delete your YouTube videos, or share your data with third parties.</small>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a th:href="@{/settings}" class="btn btn-outline-secondary">Cancel</a>
+                        <div class="d-flex align-items-center gap-3">
+                            <a th:href="@{/privacy}" class="small text-muted">Privacy Policy</a>
+                            <a th:href="@{/settings/oauth/connect}" class="btn btn-primary">Continue to Google</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

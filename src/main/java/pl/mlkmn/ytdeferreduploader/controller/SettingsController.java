@@ -10,7 +10,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import pl.mlkmn.ytdeferreduploader.config.AppMode;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
+import pl.mlkmn.ytdeferreduploader.service.AccountDeletionService;
+import pl.mlkmn.ytdeferreduploader.config.YouTubeApiConfig.AuthFlowFactory;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
@@ -22,39 +25,62 @@ import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 public class SettingsController {
 
     private final SettingsService settingsService;
-    private final GoogleAuthorizationCodeFlow authFlow;
+    private final AuthFlowFactory authFlowFactory;
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
     private final QuotaTracker quotaTracker;
+    private final AccountDeletionService accountDeletionService;
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
+        AppMode mode = appProperties.getMode();
+        model.addAttribute("appMode", mode);
+
         model.addAttribute("defaultDescription",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
         model.addAttribute("defaultPrivacy",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
-        String driveFolder = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
-        model.addAttribute("driveFolder", driveFolder);
-        model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
+
+        if (mode.canPollDrive()) {
+            String driveFolder = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+            model.addAttribute("driveFolder", driveFolder);
+            model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
+        }
+
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
         model.addAttribute("youtubeConnected", youtubeConnected);
-        model.addAttribute("defaultPlaylist",
-                settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+
         if (youtubeConnected) {
             playlistService.getChannel().ifPresent(ch ->
                     model.addAttribute("channelTitle", ch.getSnippet().getTitle()));
-            model.addAttribute("playlists", playlistService.getUserPlaylists());
+
+            if (mode.canListPlaylists()) {
+                model.addAttribute("defaultPlaylist",
+                        settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+                model.addAttribute("playlists", playlistService.getUserPlaylists());
+            }
         }
+
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
+        model.addAttribute("jobRetentionDays",
+                settingsService.getOrDefault(SettingsService.KEY_JOB_RETENTION_DAYS, "30"));
 
         return "settings";
     }
 
+    @GetMapping("/settings/oauth/consent")
+    public String showOAuthConsent(Model model) {
+        model.addAttribute("appMode", appProperties.getMode());
+        return "oauth-consent";
+    }
+
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
+        AppMode mode = appProperties.getMode();
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(mode.getScopes());
         String redirectUri = appProperties.getYoutube().getRedirectUri();
-        log.info("OAuth connect initiated: redirectUri={}", redirectUri);
-        String authUrl = authFlow.newAuthorizationUrl()
+        log.info("OAuth connect initiated: redirectUri={}, mode={}", redirectUri, mode);
+        String authUrl = flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .build();
         log.info("Redirecting to Google OAuth: url={}", authUrl);
@@ -64,10 +90,11 @@ public class SettingsController {
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(appProperties.getMode().getScopes());
         String redirectUri = appProperties.getYoutube().getRedirectUri();
         log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
-            GoogleTokenResponse tokenResponse = authFlow.newTokenRequest(code)
+            GoogleTokenResponse tokenResponse = flow.newTokenRequest(code)
                     .setRedirectUri(redirectUri)
                     .execute();
             log.info("OAuth token exchange successful: hasAccessToken={}, hasRefreshToken={}, expiresIn={}",
@@ -109,24 +136,48 @@ public class SettingsController {
     public String saveSettings(@RequestParam("defaultDescription") String defaultDescription,
                                @RequestParam("defaultPrivacy") String defaultPrivacy,
                                @RequestParam(value = "defaultPlaylist", required = false) String defaultPlaylist,
+                               @RequestParam(value = "jobRetentionDays", required = false) String jobRetentionDays,
                                @RequestParam(value = "driveFolder", required = false) String driveFolder,
                                RedirectAttributes redirectAttributes) {
+        AppMode mode = appProperties.getMode();
+
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
-        settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
+        settingsService.set(SettingsService.KEY_JOB_RETENTION_DAYS, jobRetentionDays != null ? jobRetentionDays : "30");
 
-        // Validate and save Drive folder
-        if (driveFolder != null && !driveFolder.isBlank()) {
-            String folderId = GoogleDriveService.extractFolderId(driveFolder);
-            if (folderId == null) {
-                redirectAttributes.addFlashAttribute("error",
-                        "Invalid Drive folder URL or ID. Paste a Google Drive folder URL or folder ID.");
-                return "redirect:/settings";
-            }
+        if (mode.canListPlaylists()) {
+            settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
         }
-        settingsService.set(SettingsService.KEY_DRIVE_FOLDER, driveFolder != null ? driveFolder : "");
+
+        // Validate and save Drive folder (self-hosted only, requires connected account)
+        boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+        if (mode.canPollDrive() && youtubeConnected) {
+            if (driveFolder != null && !driveFolder.isBlank()) {
+                String folderId = GoogleDriveService.extractFolderId(driveFolder);
+                if (folderId == null) {
+                    redirectAttributes.addFlashAttribute("error",
+                            "Invalid Drive folder URL or ID. Paste a Google Drive folder URL or folder ID.");
+                    return "redirect:/settings";
+                }
+            }
+            settingsService.set(SettingsService.KEY_DRIVE_FOLDER, driveFolder != null ? driveFolder : "");
+        }
 
         redirectAttributes.addFlashAttribute("success", "Settings saved");
+        return "redirect:/settings";
+    }
+
+    @PostMapping("/settings/delete-account")
+    public String deleteAccount(RedirectAttributes redirectAttributes) {
+        try {
+            accountDeletionService.deleteAllUserData();
+            redirectAttributes.addFlashAttribute("success",
+                    "All account data has been deleted. Your OAuth token has been revoked with Google.");
+        } catch (Exception e) {
+            log.error("Account deletion failed", e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Account deletion failed: " + e.getMessage());
+        }
         return "redirect:/settings";
     }
 }

@@ -18,6 +18,7 @@ public class SettingsService {
     public static final String KEY_OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
     public static final String KEY_OAUTH_TOKEN_EXPIRY = "oauth_token_expiry_seconds";
     public static final String KEY_DRIVE_FOLDER = "drive_folder";
+    public static final String KEY_JOB_RETENTION_DAYS = "job_retention_days";
 
     private final AppSettingRepository appSettingRepository;
 
@@ -39,4 +40,5 @@ public class SettingsService {
     public void delete(String key) {
         appSettingRepository.deleteById(key);
     }
+
 }

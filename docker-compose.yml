@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      APP_MODE: ${APP_MODE:-self-hosted}
+      APP_YOUTUBE_REDIRECT_URI: ${APP_YOUTUBE_REDIRECT_URI:-http://localhost:8080/settings/oauth/callback}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      GOOGLE_PICKER_API_KEY: ${GOOGLE_PICKER_API_KEY:-}
+    volumes:
+      - yt-data:/app/data
+      - yt-uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  yt-data:
+  yt-uploads:

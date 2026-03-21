@@ -18,4 +18,6 @@ public interface UploadJobRepository extends JpaRepository<UploadJob, Long> {
     List<UploadJob> findAllByOrderByCreatedAtDesc();
 
     boolean existsByDriveFileId(String driveFileId);
+
+    List<UploadJob> findByStatusInAndUpdatedAtBefore(List<UploadStatus> statuses, Instant before);
 }

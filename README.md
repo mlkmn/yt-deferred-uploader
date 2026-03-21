@@ -1,34 +1,34 @@
 # YT Deferred Uploader
 
-A self-hosted web application that polls a Google Drive folder for videos and performs queued, quota-aware uploads to YouTube via the Data API v3.
+A web application that queues videos from Google Drive and uploads them to YouTube via the Data API v3 — with quota awareness, automatic retries, and smart title generation.
 
-## Features
+**Self-hosting is the recommended way to run this app.** You get the full feature set using your own Google Cloud project, with no scope restrictions. A hosted version is available as a convenience, but with a reduced feature set to avoid requiring a paid CASA security audit.
 
-- **Google Drive integration** — Upload videos to a Drive folder from any device; the app automatically detects and queues them
-- **Smart title generation** — Auto-generates titles from video recording dates using a multi-step fallback: filename pattern parsing (Android, Samsung, Telegram, WhatsApp, iOS) -> Drive file modification date -> current time
-- **Queue** — Dashboard showing all jobs with status, cancel/retry/delete actions, live updates via HTMX polling
-- **Scheduler** — Polls pending jobs and uploads to YouTube with exponential backoff retry for transient failures
-- **Quota awareness** — Automatically defers uploads when YouTube returns 429; auto-resets daily
-- **Playlists** — Default playlist selection; videos are added to a playlist after upload
-- **OAuth2** — Connect/disconnect YouTube + Drive account from the settings page
-- **Settings** — Configurable defaults for description, privacy, playlist, and Drive folder
-- **Dark theme** — Bootstrap 5.3 dark mode throughout
-- **Docker** — Multi-stage Dockerfile for containerized deployment (non-root, with healthcheck)
+## Deployment Modes
 
-### Security
+The app runs in one of two modes, controlled by the `APP_MODE` environment variable (default: `hosted`).
 
-- **Login rate limiting** — 5 attempts per IP in a 15-minute window; returns 429 when exceeded
-- **Security headers** — HSTS (1 year, includeSubDomains), X-Frame-Options DENY, X-Content-Type-Options nosniff
-- **CSRF protection** — Enabled on all state-changing endpoints
-- **Encryption at rest** — Optional AES-256-GCM encryption for stored settings (OAuth tokens, etc.)
-- **Production profile** — Secure session cookies, Swagger disabled, structured JSON logging
+| Feature | Self-hosted | Hosted |
+|---------|:-----------:|:------:|
+| Upload videos to YouTube | Yes | Yes |
+| Pick files from Google Drive | Yes | Yes |
+| Display connected channel name | Yes | Yes |
+| Auto-poll a Drive folder | Yes | No |
+| Add uploaded video to playlist | Yes | No |
+| Trash Drive files after upload | Yes | No |
+| List/select playlists in UI | Yes | No |
+
+**Self-hosted** (`APP_MODE=self-hosted`) uses your own Google Cloud project with full OAuth scopes (`youtube`, `drive`). No verification needed.
+
+**Hosted** (`APP_MODE=hosted`) uses only non-sensitive/sensitive scopes (`youtube.upload`, `youtube.readonly`, `drive.file`) so the app can pass Google OAuth verification without a CASA audit. Drive access is via Google Picker only.
 
 ## How It Works
 
 ```
 Phone/Desktop --> Google Drive folder
                         |
-                  [DrivePollingScheduler]
+                  [DrivePollingScheduler]     (self-hosted)
+                  [Google Picker]            (hosted)
                         |
                   Creates UploadJob
                         |
@@ -36,53 +36,60 @@ Phone/Desktop --> Google Drive folder
                         |
             Drive API stream ----> YouTube API
                         |
-                  [delete from Drive]
+                  [delete from Drive]        (self-hosted only)
 ```
 
 No video data is stored on the server. The stream flows directly from Drive to YouTube.
 
-## Tech Stack
+## Features
 
-| Layer       | Technology                                       |
-|-------------|--------------------------------------------------|
-| Backend     | Spring Boot 3.4, Java 21, Spring MVC, Scheduler  |
-| Frontend    | Thymeleaf, HTMX, Bootstrap 5.3                   |
-| Database    | H2 (embedded, file-based)                         |
-| ORM         | Spring Data JPA / Hibernate                       |
-| YouTube API | google-api-services-youtube (Data API v3)         |
-| Drive API   | google-api-services-drive (Drive API v3)          |
-| Auth        | Spring Security (single admin user)               |
-| Testing     | JUnit 5, Mockito, JaCoCo (code coverage)          |
-| Build       | Gradle (Kotlin DSL)                               |
+- **Google Drive integration** — Upload videos to a Drive folder from any device; the app detects and queues them (self-hosted), or pick files manually via Google Picker (hosted)
+- **Smart title generation** — Auto-generates titles from video recording dates using filename pattern parsing (Android, Samsung, Telegram, WhatsApp, iOS), Drive metadata, or current time
+- **Queue dashboard** — All jobs with status, cancel/retry/delete actions, live updates via HTMX polling
+- **Upload scheduler** — Polls pending jobs and uploads to YouTube with exponential backoff retry
+- **Quota awareness** — Defers uploads when YouTube returns 429; auto-resets daily
+- **Playlists** — Default playlist selection; videos added after upload (self-hosted only)
+- **Auto-purge** — Completed job metadata automatically deleted after a configurable retention period
+- **Account deletion** — Full right-to-erasure: revokes OAuth tokens and deletes all user data
+- **OAuth2** — Connect/disconnect YouTube + Drive from the settings page
+- **Dark theme** — Bootstrap 5.3 dark mode throughout
 
-## Prerequisites
+### Security
 
-- Java 21+
-- A Google Cloud project with the **YouTube Data API v3** and **Google Drive API** enabled
-- OAuth 2.0 credentials (Web application type) with redirect URI matching your deployment (default: `http://localhost:8080/settings/oauth/callback`)
+- **Login rate limiting** — 5 attempts per IP in a 15-minute window
+- **Security headers** — HSTS (1 year, includeSubDomains), X-Frame-Options DENY, X-Content-Type-Options nosniff
+- **CSRF protection** — Enabled on all state-changing endpoints
+- **Encryption at rest** — Optional AES-256-GCM encryption for stored OAuth tokens
+- **Production profile** — Secure session cookies, Swagger disabled, structured JSON logging
 
-## Quick Start
+## Quick Start (Self-hosted)
+
+### Prerequisites
+
+- A Google Cloud project with **YouTube Data API v3** and **Google Drive API** enabled
+- OAuth 2.0 credentials (Web application type) with redirect URI matching your deployment
+
+### Docker Compose (recommended)
+
+1. Clone the repo and create a `.env` file:
 
 ```bash
-# Set YouTube API credentials
-export YOUTUBE_CLIENT_ID=your-client-id
-export YOUTUBE_CLIENT_SECRET=your-client-secret
-
-# Optional: override default admin credentials (admin/admin)
-export ADMIN_USERNAME=myuser
-export ADMIN_PASSWORD=mypassword
-
-# Build and run
-./gradlew bootRun
+YOUTUBE_CLIENT_ID=your-client-id
+YOUTUBE_CLIENT_SECRET=your-client-secret
+ADMIN_PASSWORD=your-secure-password
 ```
 
-Open http://localhost:8080, sign in, then go to Settings to:
-1. Connect your YouTube/Drive account
-2. Paste your Google Drive folder URL
+2. Start the app:
 
-Videos added to that folder will automatically appear in the queue.
+```bash
+docker compose up -d
+```
 
-## Docker
+This runs in **self-hosted** mode by default with persistent volumes for the database and uploads.
+
+3. Open http://localhost:8080, sign in (default user: `admin`), and go to Settings to connect your YouTube/Drive account and set a Drive folder.
+
+### Docker (manual)
 
 ```bash
 docker build -t yt-deferred-uploader .
@@ -92,29 +99,64 @@ docker run -p 8080:8080 \
   -e YOUTUBE_CLIENT_SECRET=your-client-secret \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=changeme \
+  -e APP_MODE=self-hosted \
   -v yt-data:/app/data \
+  -v yt-uploads:/app/uploads \
   yt-deferred-uploader
 ```
 
 The container runs as a non-root user and includes a healthcheck against `/actuator/health`.
 
+### From source
+
+```bash
+export YOUTUBE_CLIENT_ID=your-client-id
+export YOUTUBE_CLIENT_SECRET=your-client-secret
+export APP_MODE=self-hosted
+
+./gradlew bootRun
+```
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `APP_MODE` | No | `hosted` | `self-hosted` for full features, `hosted` for restricted scopes |
+| `YOUTUBE_CLIENT_ID` | Yes | | Google OAuth client ID |
+| `YOUTUBE_CLIENT_SECRET` | Yes | | Google OAuth client secret |
+| `ADMIN_USERNAME` | No | `admin` | Login username |
+| `ADMIN_PASSWORD` | No | `admin` | Login password |
+| `APP_YOUTUBE_REDIRECT_URI` | No | `http://localhost:8080/settings/oauth/callback` | OAuth callback URL |
+| `ENCRYPTION_KEY` | No | | AES-256-GCM key for encrypting stored tokens |
+| `GOOGLE_PICKER_API_KEY` | No | | Google Picker API key (hosted mode only) |
+| `SPRING_PROFILES_ACTIVE` | No | | Set to `prod` for production deployment |
+
+### Google Cloud Setup
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project (or use an existing one)
+3. Enable **YouTube Data API v3** and **Google Drive API**
+4. Go to **Credentials** > **Create Credentials** > **OAuth 2.0 Client ID**
+5. Set application type to **Web application**
+6. Add your redirect URI (e.g. `http://localhost:8080/settings/oauth/callback`)
+7. Copy the Client ID and Client Secret into your environment variables
+
+For **hosted mode**, also create a Picker API key:
+1. Go to **Credentials** > **Create Credentials** > **API key**
+2. Restrict it to the **Google Picker API**
+3. Set the `GOOGLE_PICKER_API_KEY` environment variable
+
 ## Production Deployment
 
-Activate the `prod` profile and set the required environment variables:
+Activate the `prod` profile:
 
 ```bash
 SPRING_PROFILES_ACTIVE=prod
-YOUTUBE_CLIENT_ID=your-client-id
-YOUTUBE_CLIENT_SECRET=your-client-secret
-ADMIN_USERNAME=your-admin-user
-ADMIN_PASSWORD=your-secure-password
-APP_YOUTUBE_REDIRECT_URI=https://your-domain.com/settings/oauth/callback
-ENCRYPTION_KEY=your-random-key    # optional, enables AES-256-GCM encryption of stored settings
 ```
 
 The prod profile enables:
 - Secure session cookies (`Secure`, `SameSite=Lax`, 30-minute timeout)
-- Forward headers support (for HTTPS proxies like Railway/nginx)
+- Forward headers support (for HTTPS proxies)
 - Swagger UI and API docs disabled
 - Logging level set to INFO with structured JSON output
 
@@ -122,45 +164,41 @@ The prod profile enables:
 
 ### Railway
 
-The repository includes a `Dockerfile.railway` optimized for Railway deployment. To set up:
+The repository includes a `Dockerfile.railway` optimized for Railway deployment:
 
 1. Create a new Railway service from your GitHub repo
-2. In the service settings, set the **Dockerfile path** to `Dockerfile.railway`
-3. Add a **volume** mounted at `/app/storage` (persists the H2 database)
-4. Set the following **environment variables**:
+2. Set the **Dockerfile path** to `Dockerfile.railway`
+3. Add a **volume** mounted at `/app/storage`
+4. Set the environment variables from the table above
+5. Set `APP_YOUTUBE_REDIRECT_URI` to `https://<your-app>.up.railway.app/settings/oauth/callback`
 
-| Variable | Required | Description |
-|---|---|---|
-| `SPRING_PROFILES_ACTIVE` | Yes | Set to `prod` |
-| `YOUTUBE_CLIENT_ID` | Yes | Google OAuth client ID |
-| `YOUTUBE_CLIENT_SECRET` | Yes | Google OAuth client secret |
-| `ADMIN_USERNAME` | Yes | Login username |
-| `ADMIN_PASSWORD` | Yes | Login password |
-| `APP_YOUTUBE_REDIRECT_URI` | Yes | `https://<your-app>.up.railway.app/settings/oauth/callback` |
-| `ENCRYPTION_KEY` | No | AES-256-GCM key for settings encryption |
-
-Make sure the redirect URI also matches the one configured in your Google Cloud Console OAuth credentials.
-
-To adjust logging verbosity at runtime, add an environment variable without redeploying:
-
-```
-LOGGING_LEVEL_PL_MLKMN_YTDEFERREDUPLOADER=DEBUG
-```
+Make sure the redirect URI matches the one configured in your Google Cloud Console.
 
 ## Configuration
 
-Key properties in `application.yml` (overridable via environment variables or Spring profiles):
+Additional properties in `application.yml` (overridable via environment variables):
 
 | Property | Default | Description |
-|---|---|---|
-| `app.drive.poll-interval-ms` | `60000` | How often to poll Drive for new videos (ms) |
-| `app.scheduler.poll-interval-ms` | `30000` | How often the upload scheduler polls (ms) |
-| `app.scheduler.max-retries` | `3` | Max retry attempts for transient failures |
-| `app.admin.username` | `admin` | Login username |
-| `app.admin.password` | `admin` | Login password |
+|----------|---------|-------------|
+| `app.drive.poll-interval-ms` | `60000` | Drive polling interval in ms (self-hosted only) |
+| `app.scheduler.poll-interval-ms` | `30000` | Upload scheduler polling interval in ms |
+| `app.scheduler.max-retries` | `3` | Max retry attempts for transient upload failures |
 | `app.youtube.quota-reset-timezone` | `Europe/Warsaw` | Timezone for daily quota reset |
-| `app.youtube.redirect-uri` | `http://localhost:8080/...` | OAuth callback URL |
-| `app.encryption-key` | *(empty)* | AES-256-GCM key for settings encryption |
+| `app.cleanup.retention-hours` | `24` | Hours to keep completed/failed job metadata |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | Spring Boot 3.4, Java 21, Spring MVC, Scheduler |
+| Frontend | Thymeleaf, HTMX, Bootstrap 5.3 |
+| Database | H2 (embedded, file-based) |
+| ORM | Spring Data JPA / Hibernate |
+| YouTube API | google-api-services-youtube (Data API v3) |
+| Drive API | google-api-services-drive (Drive API v3) |
+| Auth | Spring Security (single admin user) |
+| Testing | JUnit 5, Mockito, JaCoCo |
+| Build | Gradle (Kotlin DSL) |
 
 ## API Docs
 

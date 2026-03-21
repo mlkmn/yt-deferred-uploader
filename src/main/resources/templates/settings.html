@@ -7,20 +7,26 @@
         <span th:text="${success}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+    <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show" role="alert">
+        <span th:text="${warning}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 
             <div class="card mb-4">
                 <div class="card-header"><h5 class="mb-0">YouTube</h5></div>
                 <div class="card-body">
                     <div th:if="${youtubeConnected}" class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-success">Connected<span th:if="${channelTitle}"> — <span th:text="${channelTitle}"></span></span></span>
-                        <form method="post" th:action="@{/settings/oauth/disconnect}" style="display:inline">
-                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    onclick="return confirm('Disconnect YouTube account?')">Disconnect</button>
-                        </form>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#disconnectModal">Disconnect</button>
                     </div>
                     <div th:unless="${youtubeConnected}" class="mb-2">
                         <p class="text-muted mb-2">No YouTube account linked.</p>
-                        <a th:href="@{/settings/oauth/connect}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
+                        <a th:href="@{/settings/oauth/consent}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
                     </div>
                     <div th:if="${youtubeConnected && quotaExhausted}" class="d-flex align-items-center justify-content-between">
                         <span class="text-danger">Quota exhausted — uploads paused</span>
@@ -37,15 +43,20 @@
                 <div class="card-body">
                     <form method="post" th:action="@{/settings}">
 
-                        <div class="mb-3">
+                        <!-- Drive folder: self-hosted only -->
+                        <div class="mb-3" th:if="${appMode.canPollDrive()}">
                             <label for="driveFolder" class="form-label">Google Drive folder</label>
                             <input type="text" class="form-control" id="driveFolder" name="driveFolder"
                                    th:value="${driveFolder}"
+                                   th:disabled="${!youtubeConnected}"
                                    placeholder="https://drive.google.com/drive/folders/... or folder ID">
-                            <div th:if="${resolvedFolderId != null}" class="form-text text-success">
+                            <div th:unless="${youtubeConnected}" class="form-text text-muted">
+                                Connect a YouTube account first to configure Drive polling.
+                            </div>
+                            <div th:if="${youtubeConnected and resolvedFolderId != null}" class="form-text text-success">
                                 Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
                             </div>
-                            <div th:if="${driveFolder != null && !driveFolder.isBlank() && resolvedFolderId == null}" class="form-text text-danger">
+                            <div th:if="${youtubeConnected and driveFolder != null and !driveFolder.isBlank() and resolvedFolderId == null}" class="form-text text-danger">
                                 Could not parse folder ID from the saved value.
                             </div>
                         </div>
@@ -65,7 +76,24 @@
                             </select>
                         </div>
 
-                        <div class="mb-3" th:if="${youtubeConnected}">
+                        <div class="mb-3">
+                            <label for="jobRetentionDays" class="form-label">Job history retention</label>
+                            <div class="input-group" style="max-width: 420px;">
+                                <input type="number" class="form-control" id="jobRetentionDays" name="jobRetentionDays" style="min-width: 80px;"
+                                       th:value="${jobRetentionDays}" min="0"
+                                       placeholder="30">
+                                <span class="input-group-text">days</span>
+                                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('jobRetentionDays').value='0'">Keep forever</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('jobRetentionDays').value='-1'">Delete now</button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Completed, failed, and cancelled jobs are automatically deleted after this period.
+                                Use 0 to keep forever, or -1 to delete all finished jobs immediately.
+                            </small>
+                        </div>
+
+                        <!-- Playlist selector: self-hosted only -->
+                        <div class="mb-3" th:if="${appMode.canListPlaylists() and youtubeConnected}">
                             <label for="defaultPlaylist" class="form-label">Default playlist</label>
                             <select class="form-select" id="defaultPlaylist" name="defaultPlaylist">
                                 <option value="">None</option>
@@ -81,6 +109,67 @@
                     </form>
                 </div>
             </div>
+
+            <div class="card mt-4 border-danger">
+                <div class="card-header bg-danger text-white"><h5 class="mb-0">Danger Zone</h5></div>
+                <div class="card-body">
+                    <p class="text-muted mb-2">Permanently delete all your data from this application. This will:</p>
+                    <ul class="text-muted small">
+                        <li>Revoke the OAuth token with Google</li>
+                        <li>Delete all OAuth tokens (access, refresh, expiry)</li>
+                        <li>Delete all upload job records</li>
+                        <li>Delete all settings (Drive folder, default metadata)</li>
+                    </ul>
+                    <p class="text-danger small mb-3"><strong>This action cannot be undone.</strong></p>
+                    <form method="post" th:action="@{/settings/delete-account}" id="deleteAccountForm">
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                            Delete My Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Delete Account Confirmation Modal -->
+            <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title" id="deleteAccountModalLabel">Confirm Account Deletion</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete all your data? This will permanently remove:</p>
+                            <ul>
+                                <li>Your YouTube connection and OAuth tokens</li>
+                                <li>All upload job records and history</li>
+                                <li>All saved settings</li>
+                            </ul>
+                            <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger"
+                                    onclick="document.getElementById('deleteAccountForm').submit();">
+                                Yes, Delete Everything
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    <div class="modal fade" id="disconnectModal" tabindex="-1" aria-labelledby="disconnectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <form th:action="@{/settings/oauth/disconnect}" method="post" class="modal-body text-center py-4">
+                    <i class="bi bi-youtube d-block mb-3" style="font-size:2rem"></i>
+                    <p>Disconnect YouTube account?</p>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Disconnect</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </div>
 </body>
