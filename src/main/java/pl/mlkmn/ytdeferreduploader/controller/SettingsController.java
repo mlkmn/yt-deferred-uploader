@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -108,9 +109,12 @@ public class SettingsController {
                         String.valueOf(tokenResponse.getExpiresInSeconds()));
             }
             redirectAttributes.addFlashAttribute("success", "YouTube account linked successfully");
+        } catch (IOException e) {
+            log.error("OAuth token exchange failed: redirectUri={}", redirectUri, e);
+            redirectAttributes.addFlashAttribute("error", "Failed to exchange OAuth code. Please try again.");
         } catch (Exception e) {
-            log.error("OAuth callback failed: redirectUri={}, error={}", redirectUri, e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error", "OAuth failed: " + e.getMessage());
+            log.error("Unexpected error during OAuth callback: redirectUri={}", redirectUri, e);
+            redirectAttributes.addFlashAttribute("error", "An unexpected error occurred. Please try again.");
         }
         return "redirect:/settings";
     }
@@ -143,7 +147,19 @@ public class SettingsController {
 
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
-        settingsService.set(SettingsService.KEY_JOB_RETENTION_DAYS, jobRetentionDays != null ? jobRetentionDays : "30");
+
+        String retentionValue = jobRetentionDays != null ? jobRetentionDays.trim() : "30";
+        try {
+            int days = Integer.parseInt(retentionValue);
+            if (days < -1) {
+                redirectAttributes.addFlashAttribute("error", "Job retention days must be -1 (keep forever) or 0+");
+                return "redirect:/settings";
+            }
+            settingsService.set(SettingsService.KEY_JOB_RETENTION_DAYS, retentionValue);
+        } catch (NumberFormatException e) {
+            redirectAttributes.addFlashAttribute("error", "Job retention days must be a number");
+            return "redirect:/settings";
+        }
 
         if (mode.canListPlaylists()) {
             settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");

@@ -47,6 +47,7 @@ spring:
     url: jdbc:h2:file:./data/ytdeferreduploader
     driver-class-name: org.h2.Driver
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
   h2:
