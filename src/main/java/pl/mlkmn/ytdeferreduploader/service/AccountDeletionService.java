@@ -35,18 +35,19 @@ public class AccountDeletionService {
     public void deleteAllUserData() {
         log.info("Account deletion requested — beginning data erasure");
 
-        // 1. Revoke OAuth token with Google
-        revokeOAuthToken();
-
-        // 2. Delete all upload job records
+        // 1. Delete all upload job records
         long jobCount = uploadJobRepository.count();
         uploadJobRepository.deleteAll();
         log.info("Account deletion — deleted {} upload job records", jobCount);
 
-        // 3. Delete all settings (OAuth tokens, Drive folder, default metadata)
+        // 2. Delete all settings (OAuth tokens, Drive folder, default metadata)
         long settingCount = appSettingRepository.count();
         appSettingRepository.deleteAll();
         log.info("Account deletion — deleted {} settings", settingCount);
+
+        // 3. Revoke OAuth token with Google (after local data is deleted,
+        //    so a revocation failure doesn't leave the user locked out)
+        revokeOAuthToken();
 
         log.info("Account deletion completed — all user data erased");
     }
@@ -67,15 +68,14 @@ public class AccountDeletionService {
             return;
         }
 
-        try {
+        try (HttpClient httpClient = createHttpClient()) {
             String encodedToken = URLEncoder.encode(tokenToRevoke, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(REVOKE_URL + "?token=" + encodedToken))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .build();
 
-            HttpResponse<String> response = createHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
                 log.info("Account deletion — OAuth token revoked successfully with Google");
@@ -83,11 +83,11 @@ public class AccountDeletionService {
                 log.warn("Account deletion — Google token revocation returned status {}: {}",
                         response.statusCode(), response.body());
             }
-        } catch (IOException | InterruptedException e) {
-            log.warn("Account deletion — failed to revoke OAuth token with Google (data will still be deleted locally)", e);
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
+        } catch (IOException e) {
+            log.warn("Account deletion — failed to revoke OAuth token with Google", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Account deletion — interrupted while revoking OAuth token", e);
         }
     }
 

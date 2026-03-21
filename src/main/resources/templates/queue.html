@@ -119,15 +119,28 @@
         function showToast(message, type) {
             const container = document.getElementById('toastContainer');
             const bgClass = type === 'success' ? 'text-bg-success' : 'text-bg-danger';
-            const html = `<div class="toast ${bgClass}" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">${message}</div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                            data-bs-dismiss="toast"></button>
-                </div>
-            </div>`;
-            container.insertAdjacentHTML('beforeend', html);
-            const toastEl = container.lastElementChild;
+
+            const toastEl = document.createElement('div');
+            toastEl.className = 'toast ' + bgClass;
+            toastEl.setAttribute('role', 'alert');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'd-flex';
+
+            const body = document.createElement('div');
+            body.className = 'toast-body';
+            body.textContent = message;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close btn-close-white me-2 m-auto';
+            closeBtn.setAttribute('data-bs-dismiss', 'toast');
+
+            wrapper.appendChild(body);
+            wrapper.appendChild(closeBtn);
+            toastEl.appendChild(wrapper);
+            container.appendChild(toastEl);
+
             new bootstrap.Toast(toastEl, { delay: 5000 }).show();
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
