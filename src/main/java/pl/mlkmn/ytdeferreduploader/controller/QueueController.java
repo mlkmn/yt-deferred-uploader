@@ -44,11 +44,6 @@ public class QueueController {
     private final TitleGenerator titleGenerator;
     private final YouTubeCredentialService credentialService;
 
-    @GetMapping("/")
-    public String root() {
-        return "redirect:/queue";
-    }
-
     @GetMapping("/queue")
     public String showQueue(Model model) {
         var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
