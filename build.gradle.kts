@@ -3,7 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "3.4.3"
     id("io.spring.dependency-management") version "1.1.7"
-    id("org.owasp.dependencycheck") version "12.1.1"
+    id("org.owasp.dependencycheck") version "10.0.3"
 }
 
 group = "pl.mlkmn"
