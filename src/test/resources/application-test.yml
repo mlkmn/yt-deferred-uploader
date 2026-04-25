@@ -1,5 +1,5 @@
 app:
-  mode: self-hosted
+  mode: SELF_HOSTED
 
 spring:
   datasource:

@@ -1,5 +1,5 @@
 app:
-  mode: ${APP_MODE:self_hosted}
+  mode: ${APP_MODE:SELF_HOSTED}
   upload-dir: ./uploads
   max-file-size-mb: 500
   youtube:

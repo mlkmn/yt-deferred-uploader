@@ -12,6 +12,7 @@ import com.google.api.services.youtube.model.VideoSnippet;
 import com.google.api.services.youtube.model.VideoStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 
@@ -27,6 +28,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.mode", havingValue = "SELF_HOSTED", matchIfMissing = true)
 public class RealYouTubeUploadService implements YouTubeUploadService {
 
     private static final String APPLICATION_NAME = "yt-deferred-uploader";

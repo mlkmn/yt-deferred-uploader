@@ -11,6 +11,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 
@@ -20,6 +21,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.mode", havingValue = "SELF_HOSTED", matchIfMissing = true)
 public class RealYouTubeCredentialService implements YouTubeCredentialService {
 
     private static final String TOKEN_SERVER_URL = "https://oauth2.googleapis.com/token";
