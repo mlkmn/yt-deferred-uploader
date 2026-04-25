@@ -1,6 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.config;
 
 public enum AppMode {
-    HOSTED,
+    DEMO,
     SELF_HOSTED
 }
