@@ -21,9 +21,9 @@
                 Polling <strong th:text="${driveFolderPath}"></strong>
             </div>
             <div class="page-subtitle" th:if="${youtubeConnected == true and driveFolderPath == null}">
-                No Drive folder set - <a th:href="@{/settings}" style="color:var(--accent)">configure in Settings</a>
+                No Drive folder set — <a th:href="@{/settings}" class="accent-link">configure in Settings</a>
             </div>
-            <div class="page-subtitle" style="color:#D97706;" th:if="${youtubeConnected != true}">
+            <div class="page-subtitle warning-text" th:if="${youtubeConnected != true}">
                 Connect YouTube in Settings to get started
             </div>
         </div>

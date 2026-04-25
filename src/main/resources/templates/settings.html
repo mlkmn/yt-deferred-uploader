@@ -24,8 +24,8 @@
     <!-- ── YouTube Account ── -->
     <div class="settings-card">
         <div class="settings-card-header">
-            <div class="settings-card-icon" style="background:#FEE2E2">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#DC2626">
+            <div class="settings-card-icon icon-red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M23.5 6.19a3 3 0 00-2.11-2.12C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.39.57A3 3 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3 3 0 002.11 2.12C4.46 20.5 12 20.5 12 20.5s7.54 0 9.39-.57a3 3 0 002.11-2.12C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5v-7l6.5 3.5-6.5 3.5z"/>
                 </svg>
             </div>
@@ -34,8 +34,8 @@
         <div class="settings-card-body">
             <!-- Connected -->
             <div th:if="${youtubeConnected}" class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <span class="d-flex align-items-center" style="font-size:13px;font-weight:600;color:var(--s-completed)">
-                    <span class="connected-dot" style="background:var(--s-completed)"></span>
+                <span class="connected-ok">
+                    <span class="connected-dot connected-dot-ok"></span>
                     Connected<span th:if="${channelTitle}"> - <span th:text="${channelTitle}"></span></span>
                 </span>
                 <button th:unless="${@appProperties.mode.demoMode}"
@@ -44,13 +44,12 @@
             </div>
             <!-- Not connected -->
             <div th:unless="${youtubeConnected}">
-                <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">No YouTube account linked.</p>
+                <p class="field-hint mb-3">No YouTube account linked.</p>
                 <a th:href="@{/settings/oauth/consent}" class="btn btn-primary btn-sm">Connect YouTube Account</a>
             </div>
             <!-- Quota exhausted -->
             <div th:if="${youtubeConnected && quotaExhausted}"
-                 class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3 p-3 rounded-3"
-                 style="background:var(--s-pending-bg);font-size:13px;color:var(--s-pending)">
+                 class="quota-warning mt-3">
                 <span><i class="bi bi-exclamation-triangle-fill me-1"></i>Quota exhausted — uploads paused until tomorrow</span>
                 <form method="post" th:action="@{/settings/quota/reset}" style="display:inline">
                     <button type="submit" class="btn btn-outline-warning btn-sm"
@@ -65,8 +64,8 @@
     <!-- ── Default Metadata ── -->
     <div class="settings-card">
         <div class="settings-card-header">
-            <div class="settings-card-icon" style="background:#EDE9FE">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2">
+            <div class="settings-card-icon icon-purple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                     <polyline points="14,2 14,8 20,8"/>
                     <line x1="8" y1="13" x2="16" y2="13"/>
@@ -88,11 +87,11 @@
                     <div class="form-text text-muted" th:unless="${youtubeConnected}">
                         Connect a YouTube account first to configure Drive polling.
                     </div>
-                    <div class="form-text" style="color:var(--s-completed)"
+                    <div class="form-text status-ok"
                          th:if="${youtubeConnected and resolvedFolderId != null}">
                         Resolved folder ID: <code th:text="${resolvedFolderId}"></code>
                     </div>
-                    <div class="form-text" style="color:var(--s-failed)"
+                    <div class="form-text status-err"
                          th:if="${youtubeConnected and driveFolder != null and !driveFolder.isBlank() and resolvedFolderId == null}">
                         Could not parse folder ID from the saved value.
                     </div>
@@ -152,27 +151,27 @@
     </div>
 
     <!-- ── Danger Zone ── -->
-    <div th:unless="${@appProperties.mode.demoMode}" class="settings-card border-danger">
-        <div class="settings-card-header" style="background:#FFF5F5;border-bottom-color:#FCA5A5">
-            <div class="settings-card-icon" style="background:#FEE2E2">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
+    <div th:unless="${@appProperties.mode.demoMode}" class="settings-card settings-card-danger">
+        <div class="settings-card-header settings-card-header-danger">
+            <div class="settings-card-icon icon-red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3,6 5,6 21,6"/>
                     <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                     <path d="M10 11v6M14 11v6"/>
                     <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
                 </svg>
             </div>
-            <h5 class="settings-card-title" style="color:#DC2626">Danger Zone</h5>
+            <h5 class="settings-card-title danger-title">Danger Zone</h5>
         </div>
         <div class="settings-card-body">
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Permanently delete your account data from this application:</p>
-            <ul style="font-size:13px;color:var(--text-muted);margin-bottom:14px;padding-left:18px">
+            <p class="field-hint mb-2">Permanently delete your account data from this application:</p>
+            <ul class="field-hint mb-3" style="padding-left:18px">
                 <li>Revokes OAuth token with Google</li>
                 <li>Deletes all OAuth tokens (access, refresh, expiry)</li>
                 <li>Deletes all upload job records</li>
                 <li>Deletes all settings (Drive folder, default metadata)</li>
             </ul>
-            <p style="font-size:13px;color:#DC2626;font-weight:600;margin-bottom:14px">This action cannot be undone.</p>
+            <p class="danger-warning mb-3">This action cannot be undone.</p>
             <form method="post" th:action="@{/settings/delete-account}" id="deleteAccountForm">
                 <button type="button" class="btn btn-outline-danger"
                         data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
@@ -187,18 +186,18 @@
          class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header" style="background:#FFF5F5;border-bottom-color:#FCA5A5">
-                    <h5 class="modal-title" id="deleteAccountModalLabel" style="color:#DC2626">Confirm Account Deletion</h5>
+                <div class="modal-header modal-header-danger">
+                    <h5 class="modal-title danger-title" id="deleteAccountModalLabel">Confirm Account Deletion</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" style="font-size:13px">
+                <div class="modal-body field-hint">
                     <p>Are you sure you want to delete all your data? This will permanently remove:</p>
                     <ul style="padding-left:18px">
                         <li>Your YouTube connection and OAuth tokens</li>
                         <li>All upload job records and history</li>
                         <li>All saved settings</li>
                     </ul>
-                    <p style="color:#DC2626;font-weight:600;margin-top:12px;margin-bottom:0">This action cannot be undone.</p>
+                    <p class="danger-warning mt-3 mb-0">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -215,12 +214,12 @@
         <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <form th:action="@{/settings/oauth/disconnect}" method="post" class="modal-body text-center py-4">
-                    <div class="settings-card-icon mx-auto mb-3" style="background:#FEE2E2;width:48px;height:48px;border-radius:12px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#DC2626">
+                    <div class="settings-card-icon icon-red mx-auto mb-3" style="width:48px;height:48px;border-radius:12px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M23.5 6.19a3 3 0 00-2.11-2.12C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.39.57A3 3 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3 3 0 002.11 2.12C4.46 20.5 12 20.5 12 20.5s7.54 0 9.39-.57a3 3 0 002.11-2.12C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.5v-7l6.5 3.5-6.5 3.5z"/>
                         </svg>
                     </div>
-                    <p class="fw-semibold mb-3" style="font-size:14px">Disconnect YouTube account?</p>
+                    <p class="fw-semibold mb-3" style="font-size:14px;color:var(--text)">Disconnect YouTube account?</p>
                     <div class="d-flex justify-content-center gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-outline-danger btn-sm">Disconnect</button>
