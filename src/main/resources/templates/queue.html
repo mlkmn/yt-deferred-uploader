@@ -17,19 +17,16 @@
     <div class="page-header">
         <div>
             <div class="page-title">Upload Queue</div>
-            <div class="page-subtitle" th:if="${appMode.canPollDrive() and driveFolderPath != null}">
+            <div class="page-subtitle" th:if="${driveFolderPath != null}">
                 Polling <strong th:text="${driveFolderPath}"></strong>
             </div>
-            <div class="page-subtitle" th:if="${appMode.canPollDrive() and youtubeConnected == true and driveFolderPath == null}">
-                No Drive folder set — <a th:href="@{/settings}" style="color:var(--accent)">configure in Settings</a>
+            <div class="page-subtitle" th:if="${youtubeConnected == true and driveFolderPath == null}">
+                No Drive folder set - <a th:href="@{/settings}" style="color:var(--accent)">configure in Settings</a>
             </div>
             <div class="page-subtitle" style="color:#D97706;" th:if="${youtubeConnected != true}">
                 Connect YouTube in Settings to get started
             </div>
         </div>
-        <button th:if="${appMode.usesGooglePicker()}" type="button" class="btn btn-primary btn-sm" id="pickFromDriveBtn" onclick="openPicker()">
-            <i class="bi bi-cloud-arrow-up"></i> Pick from Drive
-        </button>
     </div>
 
     <!-- Toast container -->
@@ -45,8 +42,7 @@
         <div th:if="${#lists.isEmpty(jobs)}" class="empty-queue">
             <i class="bi bi-collection-play"></i>
             <h5>Queue is empty</h5>
-            <p th:if="${appMode.usesGooglePicker()}">Pick videos from Google Drive to get started.</p>
-            <p th:if="${appMode.canPollDrive()}">Add videos to your Google Drive folder to get started.</p>
+            <p>Add videos to your Google Drive folder to get started.</p>
         </div>
 
         <!-- Job cards -->
@@ -81,7 +77,7 @@
                         <!-- Meta row -->
                         <div class="job-meta">
                             <span class="job-size"
-                                  th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '—'}"></span>
+                                  th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '-'}"></span>
                             <span class="badge text-bg-secondary" th:text="${job.privacyStatus}"></span>
                             <span class="badge"
                                   th:classappend="${job.status.name() == 'PENDING'   ? 'text-bg-warning' :
@@ -91,7 +87,7 @@
                                                    'text-bg-dark'}"
                                   th:text="${job.status}"></span>
                             <span class="job-time"
-                                  th:text="${job.createdAt != null ? job.createdAt.toString().substring(0,16).replace('T',' ') : '—'}"></span>
+                                  th:text="${job.createdAt != null ? job.createdAt.toString().substring(0,16).replace('T',' ') : '-'}"></span>
                         </div>
 
                         <!-- Error message -->
@@ -109,11 +105,11 @@
                             </form>
                             <form th:if="${job.status.name() == 'FAILED' or job.status.name() == 'CANCELLED'}"
                                   th:action="@{/queue/{id}/retry(id=${job.id})}" method="post" style="display:inline">
-                                <button type="submit" class="btn btn-outline-warning btn-sm">↺ Retry</button>
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Retry</button>
                             </form>
                             <a th:if="${job.status.name() == 'COMPLETED' and job.youtubeId != null}"
                                th:href="'https://youtu.be/' + ${job.youtubeId}"
-                               target="_blank" class="btn btn-outline-success btn-sm">▶ View on YouTube</a>
+                               target="_blank" class="btn btn-outline-success btn-sm">View on YouTube</a>
                             <form th:if="${job.status.name() != 'UPLOADING'}"
                                   th:action="@{/queue/{id}/delete(id=${job.id})}" method="post" style="display:inline">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm"
@@ -180,97 +176,6 @@
             window.jobStatuses = newStatuses;
         });
     </script>
-
-    <!-- Google Picker (hosted mode only) -->
-    <th:block th:if="${appMode.usesGooglePicker()}">
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        const PICKER_API_KEY = /*[[${pickerApiKey}]]*/ '';
-        const CLIENT_ID = /*[[${clientId}]]*/ '';
-        const OAUTH_TOKEN = /*[[${oauthAccessToken}]]*/ '';
-        const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').getAttribute('content');
-        const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
-
-        let pickerApiLoaded = false;
-
-        function loadPickerApi() {
-            return new Promise((resolve, reject) => {
-                if (pickerApiLoaded) { resolve(); return; }
-                gapi.load('picker', {
-                    callback: () => { pickerApiLoaded = true; resolve(); },
-                    onerror: () => reject(new Error('Failed to load Google Picker API'))
-                });
-            });
-        }
-
-        async function openPicker() {
-            const btn = document.getElementById('pickFromDriveBtn');
-            btn.disabled = true;
-            try {
-                if (!OAUTH_TOKEN) {
-                    showToast('Google account not connected. Please connect in Settings first.', 'error');
-                    return;
-                }
-                await loadPickerApi();
-                const view = new google.picker.DocsView()
-                    .setIncludeFolders(true)
-                    .setMimeTypes('video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,video/3gpp,video/x-flv,video/mpeg')
-                    .setMode(google.picker.DocsViewMode.LIST);
-                const picker = new google.picker.PickerBuilder()
-                    .setAppId(CLIENT_ID.split('-')[0])
-                    .setOAuthToken(OAUTH_TOKEN)
-                    .setDeveloperKey(PICKER_API_KEY)
-                    .addView(view)
-                    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-                    .setTitle('Select videos to upload')
-                    .setCallback(pickerCallback)
-                    .build();
-                picker.setVisible(true);
-            } catch (err) {
-                console.error('Picker error:', err);
-                showToast('Failed to open Google Picker: ' + err.message, 'error');
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        function pickerCallback(data) {
-            if (data.action === google.picker.Action.PICKED) {
-                submitDriveFiles(data.docs.map(doc => doc.id));
-            }
-        }
-
-        async function submitDriveFiles(fileIds) {
-            const btn = document.getElementById('pickFromDriveBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding...';
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                headers[CSRF_HEADER] = CSRF_TOKEN;
-                const response = await fetch('/queue/from-drive', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ fileIds })
-                });
-                const result = await response.json();
-                if (response.ok) {
-                    showToast(result.message, result.errors > 0 ? 'error' : 'success');
-                    setTimeout(() => window.location.reload(), 500);
-                } else {
-                    showToast(result.error || 'Failed to add videos.', 'error');
-                }
-            } catch (err) {
-                console.error('Submit error:', err);
-                showToast('Failed to add videos to queue.', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Pick from Drive';
-            }
-        }
-        /*]]>*/
-    </script>
-    </th:block>
 
 </div>
 </body>

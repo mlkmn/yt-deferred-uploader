@@ -81,12 +81,8 @@ public class UploadScheduler {
             log.info("Upload completed: jobId={}, youtubeId={}, title='{}'",
                     job.getId(), youtubeId, job.getTitle());
 
-            if (appProperties.getMode().canInsertPlaylist()) {
-                addToPlaylistIfConfigured(job);
-            }
-            if (appProperties.getMode().canTrashDriveFiles()) {
-                deleteFromDriveIfApplicable(job);
-            }
+            addToPlaylistIfConfigured(job);
+            deleteFromDriveIfApplicable(job);
         } catch (UploadException e) {
             handleUploadError(job, e);
         } catch (Exception e) {
@@ -116,12 +112,6 @@ public class UploadScheduler {
 
     private void deleteFromDriveIfApplicable(UploadJob job) {
         if (!job.isDriveJob()) {
-            return;
-        }
-        if (!appProperties.getMode().canTrashDriveFiles()) {
-            log.info("Skipping Drive trash (not available in {} mode): jobId={}, driveFileId={}",
-                    appProperties.getMode(),
-                    job.getId(), job.getDriveFileId());
             return;
         }
         try {
@@ -168,10 +158,6 @@ public class UploadScheduler {
     private void addToPlaylistIfConfigured(UploadJob job) {
         String playlistId = job.getPlaylistId();
         if (playlistId == null || playlistId.isBlank()) {
-            return;
-        }
-        if (!appProperties.getMode().canInsertPlaylist()) {
-            log.info("Skipping playlist insertion (not available in {} mode): jobId={}", appProperties.getMode(), job.getId());
             return;
         }
 

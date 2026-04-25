@@ -77,8 +77,8 @@
         <div class="settings-card-body">
             <form method="post" th:action="@{/settings}">
 
-                <!-- Drive folder (self-hosted only) -->
-                <div class="mb-3" th:if="${appMode.canPollDrive()}">
+                <!-- Drive folder -->
+                <div class="mb-3">
                     <label for="driveFolder" class="form-label">Google Drive Folder</label>
                     <input type="text" class="form-control" id="driveFolder" name="driveFolder"
                            th:value="${driveFolder}"
@@ -133,8 +133,8 @@
                     </div>
                 </div>
 
-                <!-- Playlist (self-hosted only) -->
-                <div class="mb-4" th:if="${appMode.canListPlaylists() and youtubeConnected}">
+                <!-- Playlist (requires connected account) -->
+                <div class="mb-4" th:if="${youtubeConnected}">
                     <label for="defaultPlaylist" class="form-label">Default Playlist</label>
                     <select class="form-select" id="defaultPlaylist" name="defaultPlaylist">
                         <option value="">None</option>

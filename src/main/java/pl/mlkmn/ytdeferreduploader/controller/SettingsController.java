@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import pl.mlkmn.ytdeferreduploader.config.AppMode;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.AccountDeletionService;
 import pl.mlkmn.ytdeferreduploader.config.YouTubeApiConfig.AuthFlowFactory;
@@ -34,19 +33,16 @@ public class SettingsController {
 
     @GetMapping("/settings")
     public String showSettings(Model model) {
-        AppMode mode = appProperties.getMode();
-        model.addAttribute("appMode", mode);
+        model.addAttribute("appMode", appProperties.getMode());
 
         model.addAttribute("defaultDescription",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
         model.addAttribute("defaultPrivacy",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PRIVACY, "PRIVATE"));
 
-        if (mode.canPollDrive()) {
-            String driveFolder = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
-            model.addAttribute("driveFolder", driveFolder);
-            model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
-        }
+        String driveFolder = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+        model.addAttribute("driveFolder", driveFolder);
+        model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
 
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
         model.addAttribute("youtubeConnected", youtubeConnected);
@@ -55,11 +51,9 @@ public class SettingsController {
             playlistService.getChannel().ifPresent(ch ->
                     model.addAttribute("channelTitle", ch.getSnippet().getTitle()));
 
-            if (mode.canListPlaylists()) {
-                model.addAttribute("defaultPlaylist",
-                        settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
-                model.addAttribute("playlists", playlistService.getUserPlaylists());
-            }
+            model.addAttribute("defaultPlaylist",
+                    settingsService.getOrDefault(SettingsService.KEY_DEFAULT_PLAYLIST, ""));
+            model.addAttribute("playlists", playlistService.getUserPlaylists());
         }
 
         model.addAttribute("quotaExhausted", quotaTracker.isExhausted());
@@ -77,10 +71,9 @@ public class SettingsController {
 
     @GetMapping("/settings/oauth/connect")
     public String startOAuth() {
-        AppMode mode = appProperties.getMode();
-        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(mode.getScopes());
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow();
         String redirectUri = appProperties.getYoutube().getRedirectUri();
-        log.info("OAuth connect initiated: redirectUri={}, mode={}", redirectUri, mode);
+        log.info("OAuth connect initiated: redirectUri={}", redirectUri);
         String authUrl = flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
                 .build();
@@ -91,7 +84,7 @@ public class SettingsController {
     @GetMapping("/settings/oauth/callback")
     public String oauthCallback(@RequestParam("code") String code,
                                 RedirectAttributes redirectAttributes) {
-        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow(appProperties.getMode().getScopes());
+        GoogleAuthorizationCodeFlow flow = authFlowFactory.buildFlow();
         String redirectUri = appProperties.getYoutube().getRedirectUri();
         log.info("OAuth callback received: redirectUri={}, codeLength={}", redirectUri, code.length());
         try {
@@ -143,8 +136,6 @@ public class SettingsController {
                                @RequestParam(value = "jobRetentionDays", required = false) String jobRetentionDays,
                                @RequestParam(value = "driveFolder", required = false) String driveFolder,
                                RedirectAttributes redirectAttributes) {
-        AppMode mode = appProperties.getMode();
-
         settingsService.set(SettingsService.KEY_DEFAULT_DESCRIPTION, defaultDescription);
         settingsService.set(SettingsService.KEY_DEFAULT_PRIVACY, defaultPrivacy);
 
@@ -161,13 +152,10 @@ public class SettingsController {
             return "redirect:/settings";
         }
 
-        if (mode.canListPlaylists()) {
-            settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
-        }
+        settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
 
-        // Validate and save Drive folder (self-hosted only, requires connected account)
         boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
-        if (mode.canPollDrive() && youtubeConnected) {
+        if (youtubeConnected) {
             if (driveFolder != null && !driveFolder.isBlank()) {
                 String folderId = GoogleDriveService.extractFolderId(driveFolder);
                 if (folderId == null) {

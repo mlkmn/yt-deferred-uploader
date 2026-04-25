@@ -13,9 +13,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class YouTubeApiConfig {
 
+    private static final List<String> OAUTH_SCOPES = List.of(
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/drive"
+    );
+
     @FunctionalInterface
     public interface AuthFlowFactory {
-        GoogleAuthorizationCodeFlow buildFlow(List<String> scopes);
+        GoogleAuthorizationCodeFlow buildFlow();
     }
 
     @Bean
@@ -31,7 +37,7 @@ public class YouTubeApiConfig {
     @Bean
     public AuthFlowFactory authFlowFactory(
             AppProperties appProperties, NetHttpTransport httpTransport, GsonFactory jsonFactory) {
-        return scopes -> {
+        return () -> {
             var ytProps = appProperties.getYoutube();
 
             GoogleClientSecrets.Details details = new GoogleClientSecrets.Details()
@@ -40,7 +46,7 @@ public class YouTubeApiConfig {
             GoogleClientSecrets clientSecrets = new GoogleClientSecrets().setWeb(details);
 
             return new GoogleAuthorizationCodeFlow.Builder(
-                    httpTransport, jsonFactory, clientSecrets, scopes)
+                    httpTransport, jsonFactory, clientSecrets, OAUTH_SCOPES)
                     .setAccessType("offline")
                     .setApprovalPrompt("force")
                     .build();
