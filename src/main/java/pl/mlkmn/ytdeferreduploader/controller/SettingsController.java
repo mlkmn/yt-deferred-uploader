@@ -17,6 +17,7 @@ import pl.mlkmn.ytdeferreduploader.config.YouTubeApiConfig.AuthFlowFactory;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.QuotaTracker;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
+import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 import pl.mlkmn.ytdeferreduploader.service.YouTubePlaylistService;
 
 @Slf4j
@@ -28,6 +29,7 @@ public class SettingsController {
     private final AuthFlowFactory authFlowFactory;
     private final AppProperties appProperties;
     private final YouTubePlaylistService playlistService;
+    private final YouTubeCredentialService credentialService;
     private final QuotaTracker quotaTracker;
     private final AccountDeletionService accountDeletionService;
 
@@ -44,7 +46,7 @@ public class SettingsController {
         model.addAttribute("driveFolder", driveFolder);
         model.addAttribute("resolvedFolderId", GoogleDriveService.extractFolderId(driveFolder));
 
-        boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+        boolean youtubeConnected = credentialService.isConnected();
         model.addAttribute("youtubeConnected", youtubeConnected);
 
         if (youtubeConnected) {
@@ -154,7 +156,7 @@ public class SettingsController {
 
         settingsService.set(SettingsService.KEY_DEFAULT_PLAYLIST, defaultPlaylist != null ? defaultPlaylist : "");
 
-        boolean youtubeConnected = settingsService.get(SettingsService.KEY_OAUTH_REFRESH_TOKEN).isPresent();
+        boolean youtubeConnected = credentialService.isConnected();
         if (youtubeConnected) {
             if (driveFolder != null && !driveFolder.isBlank()) {
                 String folderId = GoogleDriveService.extractFolderId(driveFolder);
