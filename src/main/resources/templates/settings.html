@@ -36,9 +36,10 @@
             <div th:if="${youtubeConnected}" class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <span class="d-flex align-items-center" style="font-size:13px;font-weight:600;color:var(--s-completed)">
                     <span class="connected-dot" style="background:var(--s-completed)"></span>
-                    Connected<span th:if="${channelTitle}"> — <span th:text="${channelTitle}"></span></span>
+                    Connected<span th:if="${channelTitle}"> - <span th:text="${channelTitle}"></span></span>
                 </span>
-                <button type="button" class="btn btn-outline-danger btn-sm"
+                <button th:unless="${@appProperties.mode.demoMode}"
+                        type="button" class="btn btn-outline-danger btn-sm"
                         data-bs-toggle="modal" data-bs-target="#disconnectModal">Disconnect</button>
             </div>
             <!-- Not connected -->
@@ -151,7 +152,7 @@
     </div>
 
     <!-- ── Danger Zone ── -->
-    <div class="settings-card border-danger">
+    <div th:unless="${@appProperties.mode.demoMode}" class="settings-card border-danger">
         <div class="settings-card-header" style="background:#FFF5F5;border-bottom-color:#FCA5A5">
             <div class="settings-card-icon" style="background:#FEE2E2">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
@@ -182,7 +183,8 @@
     </div>
 
     <!-- Delete Account Modal -->
-    <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div th:unless="${@appProperties.mode.demoMode}"
+         class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header" style="background:#FFF5F5;border-bottom-color:#FCA5A5">
@@ -208,7 +210,8 @@
     </div>
 
     <!-- Disconnect Modal -->
-    <div class="modal fade" id="disconnectModal" tabindex="-1" aria-labelledby="disconnectModalLabel" aria-hidden="true">
+    <div th:unless="${@appProperties.mode.demoMode}"
+         class="modal fade" id="disconnectModal" tabindex="-1" aria-labelledby="disconnectModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <form th:action="@{/settings/oauth/disconnect}" method="post" class="modal-body text-center py-4">
