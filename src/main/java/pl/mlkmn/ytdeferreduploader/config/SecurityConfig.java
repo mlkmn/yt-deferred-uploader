@@ -1,6 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +17,7 @@ import pl.mlkmn.ytdeferreduploader.filter.LoginRateLimitFilter;
 
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.mode", havingValue = "SELF_HOSTED", matchIfMissing = true)
 public class SecurityConfig {
 
     private final AppProperties appProperties;
@@ -27,7 +29,7 @@ public class SecurityConfig {
         http
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/css/**", "/js/**", "/img/**", "/favicon.*", "/actuator/health", "/privacy", "/terms").permitAll()
+                        .requestMatchers("/", "/css/**", "/js/**", "/img/**", "/favicon.*", "/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

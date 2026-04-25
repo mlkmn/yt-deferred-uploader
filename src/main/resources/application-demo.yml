@@ -1,10 +1,13 @@
 app:
-  mode: SELF_HOSTED
+  mode: DEMO
 
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:demo;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:
       ddl-auto: create-drop
+  h2:
+    console:
+      enabled: false

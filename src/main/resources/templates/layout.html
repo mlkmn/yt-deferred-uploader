@@ -20,6 +20,13 @@
 </head>
 <body>
 
+<div th:if="${@appProperties.mode.demoMode}"
+     class="alert alert-info text-center mb-0 rounded-0 py-2"
+     role="alert"
+     style="font-size:13px; font-weight:600; border-left:0; border-right:0; border-top:0;">
+    <strong>Demo mode</strong> - all data is mocked. State resets every 30 minutes.
+</div>
+
 <nav class="navbar navbar-expand-sm mb-4">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/queue}">

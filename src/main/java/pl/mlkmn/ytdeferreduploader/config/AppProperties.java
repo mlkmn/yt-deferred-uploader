@@ -19,11 +19,10 @@ public class AppProperties {
 
     private Environment environment;
 
-    private AppMode mode = AppMode.HOSTED;
+    private AppMode mode = AppMode.SELF_HOSTED;
     private String uploadDir = "./uploads";
     private int maxFileSizeMb = 500;
     private String encryptionKey;
-    private Google google = new Google();
     private YouTube youtube = new YouTube();
     private Scheduler scheduler = new Scheduler();
     private Admin admin = new Admin();
@@ -37,10 +36,6 @@ public class AppProperties {
         this.environment = environment;
     }
 
-    public boolean isHostedMode() {
-        return mode == AppMode.HOSTED;
-    }
-
     @PostConstruct
     void validateConfiguration() {
         boolean isProd = environment != null
@@ -49,11 +44,6 @@ public class AppProperties {
         if (isBlank(youtube.clientId) || isBlank(youtube.clientSecret)) {
             log.warn("YouTube OAuth credentials are not configured (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET). "
                     + "Users will not be able to connect their YouTube account.");
-        }
-
-        if (mode == AppMode.HOSTED && isBlank(google.pickerApiKey)) {
-            log.warn("App is running in HOSTED mode but no Google Picker API key is configured "
-                    + "(GOOGLE_PICKER_API_KEY). Users will not be able to select files from Google Drive.");
         }
 
         if (isProd && "admin".equals(admin.password)) {
@@ -69,12 +59,6 @@ public class AppProperties {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
-    }
-
-    @Getter
-    @Setter
-    public static class Google {
-        private String pickerApiKey = "";
     }
 
     @Getter
@@ -111,6 +95,6 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Drive {
-        private long pollIntervalMs = 60000; // 1 minute
+        private long pollIntervalMs = 60000;
     }
 }

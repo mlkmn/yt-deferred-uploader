@@ -12,7 +12,6 @@ import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 import pl.mlkmn.ytdeferreduploader.service.GoogleDriveService;
 import pl.mlkmn.ytdeferreduploader.service.SettingsService;
 import pl.mlkmn.ytdeferreduploader.service.TitleGenerator;
-import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.service.YouTubeCredentialService;
 
 import java.time.Instant;
@@ -28,15 +27,9 @@ public class DrivePollingScheduler {
     private final SettingsService settingsService;
     private final YouTubeCredentialService credentialService;
     private final TitleGenerator titleGenerator;
-    private final AppProperties appProperties;
 
     @Scheduled(fixedDelayString = "${app.drive.poll-interval-ms}")
     public void pollDriveFolder() {
-        if (!appProperties.getMode().canPollDrive()) {
-            log.debug("Drive polling disabled in {} mode", appProperties.getMode());
-            return;
-        }
-
         if (!credentialService.isConnected()) {
             log.debug("No account connected, skipping Drive poll");
             return;
@@ -77,8 +70,7 @@ public class DrivePollingScheduler {
 
             job.setDescription(defaultDescription);
             job.setPrivacyStatus(PrivacyStatus.fromString(defaultPrivacy));
-            if (appProperties.getMode().canInsertPlaylist()
-                    && defaultPlaylist != null && !defaultPlaylist.isBlank()) {
+            if (defaultPlaylist != null && !defaultPlaylist.isBlank()) {
                 job.setPlaylistId(defaultPlaylist);
             }
             job.setFileSizeBytes(file.getSize());
