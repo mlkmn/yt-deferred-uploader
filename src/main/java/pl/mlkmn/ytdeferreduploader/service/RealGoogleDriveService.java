@@ -1,7 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.service;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
@@ -26,7 +26,7 @@ public class RealGoogleDriveService implements GoogleDriveService {
     private static final String APPLICATION_NAME = "yt-deferred-uploader";
 
     private final YouTubeCredentialService credentialService;
-    private final NetHttpTransport httpTransport;
+    private final HttpTransport httpTransport;
     private final GsonFactory jsonFactory;
 
     @Override
