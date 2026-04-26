@@ -43,6 +43,43 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+sourceSets {
+    create("e2eTest") {
+        compileClasspath += sourceSets["main"].output + sourceSets["test"].output
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+val e2eTestImplementation: Configuration by configurations.getting {
+    extendsFrom(configurations.testImplementation.get())
+}
+val e2eTestRuntimeOnly: Configuration by configurations.getting {
+    extendsFrom(configurations.testRuntimeOnly.get())
+}
+
+dependencies {
+    e2eTestImplementation("com.microsoft.playwright:playwright:1.49.0")
+}
+
+val e2eTest = tasks.register<Test>("e2eTest") {
+    description = "Runs Playwright end-to-end smoke tests."
+    group = "verification"
+    testClassesDirs = sourceSets["e2eTest"].output.classesDirs
+    classpath = sourceSets["e2eTest"].runtimeClasspath
+    useJUnitPlatform()
+    systemProperty("pw.headless", System.getProperty("pw.headless", "true"))
+    shouldRunAfter(tasks.test)
+}
+
+tasks.register<JavaExec>("installPlaywrightBrowsers") {
+    description = "Installs Playwright Chromium browser (and system deps on Linux). Used by CI."
+    group = "verification"
+    classpath = sourceSets["e2eTest"].runtimeClasspath
+    mainClass.set("com.microsoft.playwright.CLI")
+    args("install", "--with-deps", "chromium")
+    dependsOn("e2eTestClasses")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     testLogging {

@@ -1,0 +1,27 @@
+app:
+  mode: SELF_HOSTED
+  admin:
+    username: testadmin
+    password: test-only-password
+  encryption-key: ""
+  drive:
+    poll-interval-ms: 3600000
+  scheduler:
+    poll-interval-ms: 3600000
+  cleanup:
+    cron: "0 0 0 1 1 ?"
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  h2:
+    console:
+      enabled: false
+
+logging:
+  level:
+    pl.mlkmn.ytdeferreduploader: INFO
