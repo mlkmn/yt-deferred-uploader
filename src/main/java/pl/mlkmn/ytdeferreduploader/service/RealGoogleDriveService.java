@@ -1,7 +1,7 @@
 package pl.mlkmn.ytdeferreduploader.service;
 
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
@@ -26,7 +26,7 @@ public class RealGoogleDriveService implements GoogleDriveService {
     private static final String APPLICATION_NAME = "yt-deferred-uploader";
 
     private final YouTubeCredentialService credentialService;
-    private final NetHttpTransport httpTransport;
+    private final HttpTransport httpTransport;
     private final GsonFactory jsonFactory;
 
     @Override
@@ -90,13 +90,32 @@ public class RealGoogleDriveService implements GoogleDriveService {
     }
 
     @Override
-    public void deleteFile(String fileId) throws IOException {
+    public void deleteFile(String fileId, String folderId) throws IOException {
         Credential credential = credentialService.getCredential()
                 .orElseThrow(() -> new IOException("YouTube/Drive account not connected"));
 
         Drive drive = buildClient(credential);
-        drive.files().update(fileId, new File().setTrashed(true)).execute();
-        log.info("Trashed file in Drive: fileId={}", fileId);
+        File metadata = drive.files().get(fileId).setFields("id, ownedByMe").execute();
+
+        if (Boolean.TRUE.equals(metadata.getOwnedByMe())) {
+            drive.files().update(fileId, new File().setTrashed(true)).execute();
+            log.info("Trashed owned file in Drive: fileId={}", fileId);
+            return;
+        }
+
+        if (folderId == null || folderId.isBlank()) {
+            log.warn("Cannot remove non-owned file from watched folder: folderId is missing, fileId={}", fileId);
+            return;
+        }
+
+        // File is owned by another user (e.g. someone with upload access to the folder).
+        // Trashing requires ownership; instead remove the watched folder as a parent,
+        // which mirrors the Drive web UI's "delete from this folder" behavior.
+        drive.files().update(fileId, null)
+                .setRemoveParents(folderId)
+                .setFields("id, parents")
+                .execute();
+        log.info("Removed non-owned file from watched folder: fileId={}, folderId={}", fileId, folderId);
     }
 
     @Override

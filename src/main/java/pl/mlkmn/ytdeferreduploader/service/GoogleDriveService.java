@@ -18,7 +18,7 @@ public interface GoogleDriveService {
 
     InputStream openDownloadStream(String fileId) throws IOException;
 
-    void deleteFile(String fileId) throws IOException;
+    void deleteFile(String fileId, String folderId) throws IOException;
 
     String getFolderPath(String folderId);
 
