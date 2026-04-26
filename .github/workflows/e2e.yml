@@ -37,6 +37,8 @@ jobs:
         run: ./gradlew installPlaywrightBrowsers
 
       - name: Run E2E tests
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
         run: ./gradlew e2eTest
 
       - name: Upload E2E artifacts
