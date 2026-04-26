@@ -114,8 +114,10 @@ public class UploadScheduler {
         if (!job.isDriveJob()) {
             return;
         }
+        String folderInput = settingsService.getOrDefault(SettingsService.KEY_DRIVE_FOLDER, "");
+        String folderId = GoogleDriveService.extractFolderId(folderInput);
         try {
-            driveService.deleteFile(job.getDriveFileId());
+            driveService.deleteFile(job.getDriveFileId(), folderId);
             log.info("Deleted from Drive after upload: jobId={}, driveFileId={}",
                     job.getId(), job.getDriveFileId());
         } catch (Exception e) {

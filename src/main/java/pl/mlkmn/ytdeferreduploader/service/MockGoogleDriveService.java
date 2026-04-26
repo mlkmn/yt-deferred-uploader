@@ -42,8 +42,8 @@ public class MockGoogleDriveService implements GoogleDriveService {
     }
 
     @Override
-    public void deleteFile(String fileId) {
-        log.info("[DEMO] Pretend-trashing Drive file: fileId={}", fileId);
+    public void deleteFile(String fileId, String folderId) {
+        log.info("[DEMO] Pretend-trashing Drive file: fileId={}, folderId={}", fileId, folderId);
     }
 
     @Override
