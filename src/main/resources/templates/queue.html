@@ -86,10 +86,6 @@
                                                    job.status.name() == 'FAILED'     ? 'text-bg-danger'  :
                                                    'text-bg-dark'}"
                                   th:text="${job.status}"></span>
-                            <time class="job-time" th:if="${job.createdAt != null}"
-                                  th:attr="datetime=${job.createdAt.toString()}"
-                                  th:text="${job.createdAt.toString().substring(0,16).replace('T',' ') + ' UTC'}"></time>
-                            <span class="job-time" th:if="${job.createdAt == null}">-</span>
                         </div>
 
                         <!-- Error message -->
@@ -98,25 +94,37 @@
                             <span th:text="${job.errorMessage}"></span>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="job-actions">
-                            <form th:if="${job.status.name() == 'PENDING'}"
-                                  th:action="@{/queue/{id}/cancel(id=${job.id})}" method="post" style="display:inline">
-                                <button type="submit" class="btn btn-outline-danger btn-sm"
-                                        onclick="return confirm('Cancel this job?')">Cancel</button>
-                            </form>
-                            <form th:if="${job.status.name() == 'FAILED' or job.status.name() == 'CANCELLED'}"
-                                  th:action="@{/queue/{id}/retry(id=${job.id})}" method="post" style="display:inline">
-                                <button type="submit" class="btn btn-outline-warning btn-sm">Retry</button>
-                            </form>
-                            <a th:if="${job.status.name() == 'COMPLETED' and job.youtubeId != null}"
-                               th:href="'https://youtu.be/' + ${job.youtubeId}"
-                               target="_blank" class="btn btn-outline-success btn-sm">View on YouTube</a>
-                            <form th:if="${job.status.name() != 'UPLOADING'}"
-                                  th:action="@{/queue/{id}/delete(id=${job.id})}" method="post" style="display:inline">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm"
-                                        onclick="return confirm('Delete this job?')">Delete</button>
-                            </form>
+                        <!-- Footer: actions left, timestamp right -->
+                        <div class="job-footer">
+                            <div class="job-actions">
+                                <form th:if="${job.status.name() == 'PENDING'}"
+                                      th:action="@{/queue/{id}/cancel(id=${job.id})}" method="post" style="display:inline">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            onclick="return confirm('Cancel this job?')">Cancel</button>
+                                </form>
+                                <form th:if="${job.status.name() == 'FAILED' or job.status.name() == 'CANCELLED'}"
+                                      th:action="@{/queue/{id}/retry(id=${job.id})}" method="post" style="display:inline">
+                                    <button type="submit" class="btn btn-outline-warning btn-sm">Retry</button>
+                                </form>
+                                <a th:if="${job.status.name() == 'COMPLETED' and job.youtubeId != null}"
+                                   th:href="'https://youtu.be/' + ${job.youtubeId}"
+                                   target="_blank" class="btn btn-outline-success btn-sm">View on YouTube</a>
+                                <form th:if="${job.status.name() != 'UPLOADING'}"
+                                      th:action="@{/queue/{id}/delete(id=${job.id})}" method="post" style="display:inline">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                            onclick="return confirm('Delete this job?')">Delete</button>
+                                </form>
+                            </div>
+                            <div class="job-timestamp" th:if="${job.createdAt != null}">
+                                <span class="job-ts-date">
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="13" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/></svg>
+                                    <span class="job-ts-date-text" th:attr="data-datetime=${job.createdAt.toString()}"></span>
+                                </span>
+                                <span class="job-ts-time">
+                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 10.5,10"/></svg>
+                                    <span class="job-ts-time-text" th:attr="data-datetime=${job.createdAt.toString()}"></span>
+                                </span>
+                            </div>
                         </div>
 
                     </div>
@@ -160,31 +168,35 @@
             toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
-        function formatLocalTimes(root) {
+        function formatTimestamps(root) {
             const scope = root || document;
             const pad = n => String(n).padStart(2, '0');
-            scope.querySelectorAll('time.job-time[datetime]').forEach(el => {
-                const dt = new Date(el.getAttribute('datetime'));
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+            scope.querySelectorAll('.job-ts-date-text[data-datetime]').forEach(el => {
+                const dt = new Date(el.dataset.datetime);
                 if (isNaN(dt.getTime())) return;
-                el.textContent = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-                try {
-                    el.title = dt.toLocaleString(undefined, {
-                        year: 'numeric', month: 'long', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit',
-                        timeZoneName: 'short'
-                    });
-                } catch (e) {
-                    el.title = dt.toLocaleString();
-                }
+                const today = new Date();
+                const isToday = dt.getFullYear() === today.getFullYear() &&
+                                dt.getMonth() === today.getMonth() &&
+                                dt.getDate() === today.getDate();
+                el.textContent = isToday ? 'Today' : `${months[dt.getMonth()]} ${dt.getDate()}`;
+                el.title = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+            });
+
+            scope.querySelectorAll('.job-ts-time-text[data-datetime]').forEach(el => {
+                const dt = new Date(el.dataset.datetime);
+                if (isNaN(dt.getTime())) return;
+                el.textContent = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
             });
         }
 
         window.jobStatuses = captureStatuses();
-        formatLocalTimes();
+        formatTimestamps();
 
         document.body.addEventListener('htmx:afterSwap', function(e) {
             if (e.detail.target.id !== 'job-table') return;
-            formatLocalTimes();
+            formatTimestamps();
             const newStatuses = captureStatuses();
             for (const [id, data] of Object.entries(newStatuses)) {
                 const old = window.jobStatuses[id];
