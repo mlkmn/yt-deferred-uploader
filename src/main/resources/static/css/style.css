@@ -265,6 +265,63 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font); }
 .job-time { font-size: 12px; color: var(--text-muted); margin-left: auto; }
 .job-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* Footer row: actions left, timestamp right */
+.job-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.job-timestamp {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.job-ts-date,
+.job-ts-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.job-ts-date svg,
+.job-ts-time svg { flex-shrink: 0; }
+
+.job-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.job-timestamp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.job-ts-date,
+.job-ts-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.job-ts-date svg,
+.job-ts-time svg { flex-shrink: 0; }
+
 .job-error {
     font-size: 11px;
     color: var(--s-failed);
