@@ -17,17 +17,19 @@ Phone or desktop -> Google Drive folder
                           |
               Drive API stream -> YouTube API
                           |
-                    [trash from Drive]
+                    [trash / unshare from Drive]
 ```
 
 The app polls a configured Drive folder, queues new videos as `UploadJob` rows, and drains the queue against the YouTube Data API. Streaming is chunked (10 MB) and runs straight from Drive's `executeMediaAsInputStream` into YouTube's `videos.insert` - nothing is written to disk. On `429` quota exhaustion, all pending jobs are deferred to the next midnight in the configured timezone. Transient failures retry with exponential backoff (up to 3 attempts).
+
+After upload, files you own are trashed; files uploaded to the watched folder by collaborators (which the API cannot trash without ownership) are removed from the watched folder via `removeParents`, mirroring the Drive web UI's "delete from this folder" behavior.
 
 ## Modes
 
 The `app.mode` property switches between two modes:
 
 - **SELF_HOSTED** (default) - the real app. You run your own Spring Boot instance against your own Google Cloud project and OAuth credentials. Form login, real Drive polling, real YouTube uploads.
-- **DEMO** - a fully-mocked sandbox. No Google APIs are called, no credentials needed. The four service classes (`YouTubeUploadService`, `GoogleDriveService`, `YouTubeCredentialService`, `YouTubePlaylistService`) are swapped for `Mock*` implementations via Spring's `@ConditionalOnProperty`. Data lives in in-memory H2, is seeded with four sample jobs at startup, and is wiped plus re-seeded every 30 minutes. Login is bypassed via an auto-login filter.
+- **DEMO** - a fully-mocked sandbox. No Google APIs are called, no credentials needed. The four service classes (`YouTubeUploadService`, `GoogleDriveService`, `YouTubeCredentialService`, `YouTubePlaylistService`) are swapped for `Mock*` implementations via Spring's `@ConditionalOnProperty`. Data lives in in-memory H2, is seeded with four sample jobs at startup, and is wiped plus re-seeded every 30 minutes. Login is bypassed via an auto-login filter, and a top-of-page banner makes the mocked nature obvious. OAuth and account-deletion controls are hidden so the demo never offers actions whose only correct outcome is a no-op.
 
 ## Quick Start (SELF_HOSTED)
 
@@ -85,19 +87,21 @@ export YOUTUBE_CLIENT_SECRET=your-client-secret
 SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun
 ```
 
-No environment variables needed. Visit http://localhost:8080 - you'll be auto-logged in and land on the queue with four pre-seeded jobs (one COMPLETED, one UPLOADING, one PENDING, one FAILED). The PENDING one transitions through UPLOADING to COMPLETED within 15 seconds via the mock upload service.
+No environment variables needed. Visit http://localhost:8080 - you'll be auto-logged in and land on the queue with four pre-seeded jobs (one COMPLETED, one UPLOADING, one PENDING, one FAILED). The PENDING one transitions through UPLOADING to COMPLETED within 15 seconds via the mock upload service. A banner across the top of every page reminds you that all data is mocked and resets every 30 minutes.
 
 ## Features
 
 - **Drive folder polling** - point at a Drive folder; the app picks up new videos automatically
 - **Smart title generation** - extracts dates from filename patterns (Android, Samsung, Telegram, WhatsApp, iOS) or falls back to Drive's `modifiedTime`
-- **Queue dashboard** - HTMX-polled live updates, cancel/retry/delete per-job actions
+- **Queue dashboard** - HTMX-polled live updates, cancel/retry/delete per-job actions, timestamps rendered in the viewer's local timezone
 - **Quota-aware scheduling** - defers all pending jobs when YouTube returns 429, resumes at the next midnight
 - **Exponential backoff** - transient errors retry up to 3 times with growing delay
 - **Playlists** - assign a default playlist; uploaded videos are added automatically
+- **Ownership-aware Drive cleanup** - own files get trashed, collaborator uploads get unshared from the watched folder
 - **Auto-purge** - completed jobs deleted after a configurable retention window
 - **Account deletion** - revokes the OAuth token with Google and wipes all local state
 - **Encrypted token storage** - AES-256-GCM via `EncryptedStringConverter` when `ENCRYPTION_KEY` is set
+- **Dark theme UI** - warm dark palette with Plus Jakarta Sans
 
 ### Security
 
@@ -168,14 +172,31 @@ Additional properties in `application.yml` (overridable via environment variable
 | Layer | Technology |
 |-------|------------|
 | Backend | Spring Boot 3.4, Java 21, Spring MVC, Spring Scheduler |
-| Frontend | Thymeleaf, HTMX, Bootstrap 5.3 |
+| Frontend | Thymeleaf, HTMX, Bootstrap 5.3, Plus Jakarta Sans |
 | Database | H2 (file-based for SELF_HOSTED, in-memory for DEMO) |
 | ORM | Spring Data JPA / Hibernate |
 | YouTube API | google-api-services-youtube (Data API v3) |
 | Drive API | google-api-services-drive (Drive API v3) |
 | Auth | Spring Security (form login for SELF_HOSTED, auto-login for DEMO) |
-| Testing | JUnit 5, Mockito, JaCoCo (40% min coverage) |
+| Testing | JUnit 5, Mockito, JaCoCo (40% min coverage), Playwright (e2e smoke tests) |
 | Build | Gradle (Kotlin DSL) |
+
+## Testing
+
+Unit and integration tests:
+
+```bash
+./gradlew test
+```
+
+Playwright end-to-end smoke tests run in a separate `e2eTest` source set against a Spring Boot context on a random port (in-memory H2, fake admin creds, schedulers pushed out via the `e2e` profile):
+
+```bash
+./gradlew installPlaywrightBrowsers   # one-time, installs Chromium
+./gradlew e2eTest
+```
+
+Trace files for failed e2e runs are written to `build/e2e-results/` and uploaded as artifacts in CI.
 
 ## API Docs
 
