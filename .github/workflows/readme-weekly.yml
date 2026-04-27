@@ -1,0 +1,68 @@
+name: Weekly README refresh
+
+# Runs every Monday at 08:00 UTC. Diffs the last 7 days of commits on master,
+# asks Claude to update README.md, and opens a PR if anything changed.
+#
+# Requires:
+#   - Repository secret ANTHROPIC_API_KEY.
+#   - "Allow GitHub Actions to create and approve pull requests" enabled in
+#     Settings -> Actions -> General -> Workflow permissions. Otherwise the
+#     `gh pr create` step will fail with a 403.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Anthropic SDK
+        run: pip install --quiet 'anthropic>=0.40,<1.0'
+
+      - name: Refresh README
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python .github/scripts/refresh_readme.py
+
+      - name: Open PR if README changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- README.md; then
+            echo "README unchanged — nothing to do."
+            exit 0
+          fi
+
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="readme-refresh/${DATE}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add README.md
+          git commit -m "docs: weekly README refresh (${DATE})"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --base master \
+            --head "$BRANCH" \
+            --title "docs: weekly README refresh (${DATE})" \
+            --body "Automated weekly refresh based on commits from the past 7 days. Review the diff against README.md before merging."
