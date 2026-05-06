@@ -10,6 +10,8 @@ app:
     poll-interval-ms: 3600000
   cleanup:
     cron: "0 0 0 1 1 ?"
+  queue:
+    recent-window-seconds: 2
 
 spring:
   datasource:
