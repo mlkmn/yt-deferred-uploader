@@ -158,4 +158,41 @@ class QueueE2ETest extends BaseE2ETest {
         assertThat(page.locator(".job-card")).hasCount(1);
         assertThat(page.locator(".badge.text-bg-danger")).hasCount(0);
     }
+
+    // --- Scenario 12: Cross-links between /queue and /queue/archive ---
+
+    @Test
+    void crossLinks_navigateBetweenQueueAndArchive() {
+        testJobSeeder().seedPending("Linker");
+        page.navigate(baseUrl() + "/queue");
+
+        page.getByRole(AriaRole.LINK,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName(java.util.regex.Pattern.compile("View archive"))).click();
+        page.waitForURL(baseUrl() + "/queue/archive");
+
+        page.getByRole(AriaRole.LINK,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName(java.util.regex.Pattern.compile("Back to queue"))).click();
+        page.waitForURL(baseUrl() + "/queue");
+    }
+
+    // --- Scenario 13: Card markup is identical on /queue and /queue/archive ---
+
+    @Test
+    void cardMarkup_isIdenticalOnQueueAndArchive() {
+        testJobSeeder().seedCompleted("Parity Test", "ytParity");
+
+        page.navigate(baseUrl() + "/queue");
+        assertThat(page.locator(".job-title").first()).hasText("Parity Test");
+        assertThat(page.locator(".badge.text-bg-success").first()).isVisible();
+        assertThat(page.locator(".job-timestamp").first()).isVisible();
+        assertThat(page.getByRole(AriaRole.LINK,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("View on YouTube"))).isVisible();
+
+        page.navigate(baseUrl() + "/queue/archive");
+        assertThat(page.locator(".job-title").first()).hasText("Parity Test");
+        assertThat(page.locator(".badge.text-bg-success").first()).isVisible();
+        assertThat(page.locator(".job-timestamp").first()).isVisible();
+        assertThat(page.getByRole(AriaRole.LINK,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("View on YouTube"))).isVisible();
+    }
 }
