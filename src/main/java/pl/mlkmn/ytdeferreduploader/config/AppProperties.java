@@ -28,6 +28,7 @@ public class AppProperties {
     private Admin admin = new Admin();
     private Cleanup cleanup = new Cleanup();
     private Drive drive = new Drive();
+    private Queue queue = new Queue();
 
     public AppProperties() {
     }
@@ -96,5 +97,11 @@ public class AppProperties {
     @Setter
     public static class Drive {
         private long pollIntervalMs = 60000;
+    }
+
+    @Getter
+    @Setter
+    public static class Queue {
+        private long recentWindowSeconds = 300;
     }
 }
