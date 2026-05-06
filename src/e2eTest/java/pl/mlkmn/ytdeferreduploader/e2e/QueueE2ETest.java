@@ -114,4 +114,48 @@ class QueueE2ETest extends BaseE2ETest {
         assertThat(page.locator(".job-card")).hasCount(1);
         assertThat(page.locator(".job-title").first()).hasText("Just Done");
     }
+
+    // --- Scenario 10: Archive paginates at 25 per page ---
+
+    @Test
+    void archive_paginates_andHandlesOutOfRangePages() {
+        for (int i = 0; i < 30; i++) {
+            testJobSeeder().seedCompleted("done-" + i, "yt" + i);
+        }
+
+        page.navigate(baseUrl() + "/queue/archive");
+        assertThat(page.locator(".job-card")).hasCount(25);
+
+        var prevLi = page.locator("li.page-item").filter(
+                new com.microsoft.playwright.Locator.FilterOptions().setHasText("Previous"));
+        var nextLi = page.locator("li.page-item").filter(
+                new com.microsoft.playwright.Locator.FilterOptions().setHasText("Next"));
+        assertThat(prevLi).hasClass(java.util.regex.Pattern.compile("\\bdisabled\\b"));
+        assertThat(nextLi).not().hasClass(java.util.regex.Pattern.compile("\\bdisabled\\b"));
+
+        page.getByRole(AriaRole.LINK,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Next")).click();
+        page.waitForURL(baseUrl() + "/queue/archive?page=1");
+        assertThat(page.locator(".job-card")).hasCount(5);
+        assertThat(prevLi).not().hasClass(java.util.regex.Pattern.compile("\\bdisabled\\b"));
+        assertThat(nextLi).hasClass(java.util.regex.Pattern.compile("\\bdisabled\\b"));
+
+        APIResponse outOfRange = page.request().get(baseUrl() + "/queue/archive?page=99");
+        org.junit.jupiter.api.Assertions.assertEquals(200, outOfRange.status());
+        page.navigate(baseUrl() + "/queue/archive?page=99");
+        assertThat(page.locator(".empty-queue")).isVisible();
+    }
+
+    // --- Scenario 11: Archive excludes FAILED jobs ---
+
+    @Test
+    void archive_excludesFailedJobs() {
+        testJobSeeder().seedFailed("Failed Upload", "Some error");
+        testJobSeeder().seedCompleted("Done", "ytX");
+
+        page.navigate(baseUrl() + "/queue/archive");
+
+        assertThat(page.locator(".job-card")).hasCount(1);
+        assertThat(page.locator(".badge.text-bg-danger")).hasCount(0);
+    }
 }
