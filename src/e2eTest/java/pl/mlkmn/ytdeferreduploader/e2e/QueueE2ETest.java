@@ -1,0 +1,77 @@
+package pl.mlkmn.ytdeferreduploader.e2e;
+
+import com.microsoft.playwright.APIResponse;
+import com.microsoft.playwright.options.AriaRole;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+
+class QueueE2ETest extends BaseE2ETest {
+
+    private static final String VALID_USERNAME = "testadmin";
+    private static final String VALID_PASSWORD = "test-only-password";
+
+    @BeforeEach
+    void resetAndLogin() {
+        testJobSeeder().clearAll();
+        page.navigate(baseUrl() + "/login");
+        page.getByLabel("Username").fill(VALID_USERNAME);
+        page.getByLabel("Password").fill(VALID_PASSWORD);
+        page.getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign in")).click();
+        page.waitForURL(baseUrl() + "/queue");
+    }
+
+    // --- Scenario 5: Active view renders ---
+
+    @Test
+    void activeView_rendersPendingJob_andSchedulesPolling() {
+        testJobSeeder().seedPending("My Pending Video");
+        page.navigate(baseUrl() + "/queue");
+
+        assertThat(page.locator(".job-card")).hasCount(1);
+        assertThat(page.locator("#job-table"))
+                .hasAttribute("hx-trigger", "every 5s");
+    }
+
+    // --- Scenario 6: FAILED stays visible past the recency window ---
+
+    @Test
+    void failedJob_remainsVisibleAfterRecencyWindow() {
+        testJobSeeder().seedFailed("Bad Upload", "Quota exceeded");
+        page.navigate(baseUrl() + "/queue");
+
+        assertThat(page.locator(".job-card")).hasCount(1);
+        assertThat(page.getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Retry"))).isVisible();
+
+        page.waitForTimeout(4000);
+        page.reload();
+
+        assertThat(page.locator(".job-card")).hasCount(1);
+        assertThat(page.getByRole(AriaRole.BUTTON,
+                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Retry"))).isVisible();
+    }
+
+    // --- Scenario 7: Polling fragment is small regardless of completed-job count ---
+
+    @Test
+    void pollingFragment_excludesOldCompletedJobs() {
+        for (int i = 0; i < 100; i++) {
+            testJobSeeder().seedCompleted("done-" + i, "yt" + i);
+        }
+        testJobSeeder().seedPending("Active One");
+
+        page.navigate(baseUrl() + "/queue");
+        page.waitForTimeout(4000);
+
+        APIResponse response = page.request().get(baseUrl() + "/queue/table");
+        org.junit.jupiter.api.Assertions.assertEquals(200, response.status());
+
+        String html = response.text();
+        int cardCount = html.split("class=\"job-card\"", -1).length - 1;
+        org.junit.jupiter.api.Assertions.assertEquals(1, cardCount,
+                "Expected exactly one .job-card in /queue/table response after recency window expired");
+    }
+}
