@@ -2,11 +2,13 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
@@ -56,6 +58,18 @@ public class QueueController {
         model.addAttribute("jobs", jobs);
         model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         return "queue :: jobTable";
+    }
+
+    @GetMapping("/queue/archive")
+    public String showArchive(@RequestParam(defaultValue = "0") int page, Model model) {
+        var pageOfJobs = uploadJobRepository.findByStatusInOrderByCreatedAtDesc(
+                List.of(UploadStatus.COMPLETED, UploadStatus.CANCELLED),
+                PageRequest.of(page, 25));
+        model.addAttribute("jobs", pageOfJobs.getContent());
+        model.addAttribute("currentPage", pageOfJobs.getNumber());
+        model.addAttribute("totalPages", pageOfJobs.getTotalPages());
+        model.addAttribute("appMode", appProperties.getMode());
+        return "archive";
     }
 
     private List<UploadJob> fetchActiveAndRecentJobs() {

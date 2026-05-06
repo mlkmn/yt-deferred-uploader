@@ -252,6 +252,59 @@ class QueueControllerTest {
                 .andExpect(view().name("queue :: jobTable"));
     }
 
+    // --- GET /queue/archive ---
+
+    @Test
+    void archive_returnsCompletedAndCancelledJobs() throws Exception {
+        UploadJob completed = createJob(UploadStatus.COMPLETED);
+        UploadJob cancelled = createJob(UploadStatus.CANCELLED);
+        createJob(UploadStatus.FAILED);
+        createJob(UploadStatus.PENDING);
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("archive"))
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItems(
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(completed.getId())),
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(cancelled.getId())))))
+                .andExpect(model().attribute("currentPage", 0));
+    }
+
+    @Test
+    void archive_excludesFailedJobs() throws Exception {
+        createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.empty()));
+    }
+
+    @Test
+    void archive_paginatesAt25PerPage() throws Exception {
+        for (int i = 0; i < 30; i++) {
+            createJob(UploadStatus.COMPLETED);
+        }
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasSize(25)))
+                .andExpect(model().attribute("totalPages", 2));
+
+        mockMvc.perform(get("/queue/archive").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasSize(5)))
+                .andExpect(model().attribute("currentPage", 1));
+    }
+
+    @Test
+    void archive_outOfRangePageRendersEmpty() throws Exception {
+        createJob(UploadStatus.COMPLETED);
+
+        mockMvc.perform(get("/queue/archive").param("page", "99"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.empty()));
+    }
+
     private UploadJob createJob(UploadStatus status) {
         UploadJob job = new UploadJob();
         job.setTitle("Test Video");
