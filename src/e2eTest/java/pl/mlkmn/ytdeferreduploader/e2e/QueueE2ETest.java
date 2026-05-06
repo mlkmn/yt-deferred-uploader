@@ -74,4 +74,44 @@ class QueueE2ETest extends BaseE2ETest {
         org.junit.jupiter.api.Assertions.assertEquals(1, cardCount,
                 "Expected exactly one .job-card in /queue/table response after recency window expired");
     }
+
+    // --- Scenario 8: Toast appears when polled job transitions to COMPLETED ---
+
+    @Test
+    void completionTransition_showsSuccessToast() {
+        var job = testJobSeeder().seedUploading("Transition Test");
+        page.navigate(baseUrl() + "/queue");
+
+        // Wait until the page has captured initial statuses (the inline script runs on load).
+        assertThat(page.locator(".job-card")).hasCount(1);
+
+        // HTMX polls every 5s. With recent-window-seconds=2 in the e2e profile, the COMPLETED
+        // job is only visible if its updatedAt is within 2s of "now" when the poll fires.
+        // Wait just under one poll cycle so that markCompleted runs close to the next poll.
+        page.waitForTimeout(4000);
+        testJobSeeder().markCompleted(job.getId());
+
+        // Allow up to 8s for the next swap and the toast to appear.
+        assertThat(page.locator(".toast.text-bg-success"))
+                .containsText("Transition Test",
+                        new com.microsoft.playwright.assertions.LocatorAssertions.ContainsTextOptions().setTimeout(8000));
+    }
+
+    // --- Scenario 9: Recent-tail expiry drops the job off /queue but keeps it on /queue/archive ---
+
+    @Test
+    void recentTail_expiresAfterWindow_andAppearsInArchive() {
+        var job = testJobSeeder().seedCompleted("Just Done", "ytExpiry");
+
+        page.navigate(baseUrl() + "/queue");
+        assertThat(page.locator(".job-card")).hasCount(1);
+
+        page.waitForTimeout(4000);
+        page.reload();
+        assertThat(page.locator(".job-card")).hasCount(0);
+
+        page.navigate(baseUrl() + "/queue/archive");
+        assertThat(page.locator(".job-card")).hasCount(1);
+        assertThat(page.locator(".job-title").first()).hasText("Just Done");
+    }
 }
