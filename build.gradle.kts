@@ -56,11 +56,13 @@ val e2eTestImplementation: Configuration by configurations.getting {
 val e2eTestRuntimeOnly: Configuration by configurations.getting {
     extendsFrom(configurations.testRuntimeOnly.get())
 }
+val e2eTestCompileOnly: Configuration by configurations.getting
+val e2eTestAnnotationProcessor: Configuration by configurations.getting
 
 dependencies {
     e2eTestImplementation("com.microsoft.playwright:playwright:1.49.0")
-    "e2eTestCompileOnly"("org.projectlombok:lombok")
-    "e2eTestAnnotationProcessor"("org.projectlombok:lombok")
+    e2eTestCompileOnly("org.projectlombok:lombok")
+    e2eTestAnnotationProcessor("org.projectlombok:lombok")
 }
 
 val e2eTest = tasks.register<Test>("e2eTest") {
