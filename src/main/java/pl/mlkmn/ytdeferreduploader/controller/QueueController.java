@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -35,10 +36,9 @@ public class QueueController {
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = fetchActiveAndRecentJobs();
         model.addAttribute("jobs", jobs);
-        model.addAttribute("hasActiveJobs", jobs.stream()
-                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         model.addAttribute("appMode", appProperties.getMode());
 
         boolean connected = credentialService.isConnected();
@@ -52,11 +52,24 @@ public class QueueController {
 
     @GetMapping("/queue/table")
     public String queueTableFragment(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = fetchActiveAndRecentJobs();
         model.addAttribute("jobs", jobs);
-        model.addAttribute("hasActiveJobs", jobs.stream()
-                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         return "queue :: jobTable";
+    }
+
+    private List<UploadJob> fetchActiveAndRecentJobs() {
+        Instant cutoff = Instant.now().minusSeconds(
+                appProperties.getQueue().getRecentWindowSeconds());
+        return uploadJobRepository.findActiveAndRecent(
+                List.of(UploadStatus.PENDING, UploadStatus.UPLOADING, UploadStatus.FAILED),
+                List.of(UploadStatus.COMPLETED, UploadStatus.CANCELLED),
+                cutoff);
+    }
+
+    private boolean hasActiveJobs(List<UploadJob> jobs) {
+        return jobs.stream().anyMatch(j ->
+                j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING);
     }
 
     @PostMapping("/queue/{id}/cancel")

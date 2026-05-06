@@ -21,8 +21,11 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -200,6 +203,53 @@ class QueueControllerTest {
                 .andExpect(flash().attributeExists("success"));
 
         assertTrue(jobRepository.findById(job.getId()).isEmpty());
+    }
+
+    // --- GET /queue ---
+
+    @Test
+    void showQueue_includesActiveAndFailedJobs() throws Exception {
+        UploadJob pending = createJob(UploadStatus.PENDING);
+        UploadJob uploading = createJob(UploadStatus.UPLOADING);
+        UploadJob failed = createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("queue"))
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItems(
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(pending.getId())),
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(uploading.getId())),
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(failed.getId())))))
+                .andExpect(model().attribute("hasActiveJobs", true));
+    }
+
+    @Test
+    void showQueue_includesRecentlyCompletedJobs() throws Exception {
+        UploadJob completed = createJob(UploadStatus.COMPLETED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItem(
+                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(completed.getId())))));
+    }
+
+    @Test
+    void showQueue_hasActiveJobsFalseWhenOnlyTerminalStates() throws Exception {
+        createJob(UploadStatus.COMPLETED);
+        createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("hasActiveJobs", false));
+    }
+
+    @Test
+    void queueTable_returnsFragmentView() throws Exception {
+        createJob(UploadStatus.PENDING);
+
+        mockMvc.perform(get("/queue/table"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("queue :: jobTable"));
     }
 
     private UploadJob createJob(UploadStatus status) {
