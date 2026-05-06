@@ -35,4 +35,6 @@ public interface UploadJobRepository extends JpaRepository<UploadJob, Long> {
             @Param("alwaysVisible") List<UploadStatus> alwaysVisible,
             @Param("recentTail") List<UploadStatus> recentTail,
             @Param("updatedAfter") Instant updatedAfter);
+
+    Page<UploadJob> findByStatusInOrderByCreatedAtDesc(List<UploadStatus> statuses, Pageable pageable);
 }
