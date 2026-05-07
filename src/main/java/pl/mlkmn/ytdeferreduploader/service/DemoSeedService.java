@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,17 +26,27 @@ import java.util.List;
 public class DemoSeedService {
 
     private static final String DEMO_VIDEO_ID = "dQw4w9WgXcQ";
+    private static final Profiles DEVTOOLS = Profiles.of("devtools");
 
     private final UploadJobRepository jobRepository;
+    private final Environment environment;
 
     @EventListener(ApplicationReadyEvent.class)
     public void seedOnStartup() {
+        if (environment.acceptsProfiles(DEVTOOLS)) {
+            log.info("[DEMO] devtools profile active - skipping startup seed");
+            return;
+        }
         log.info("[DEMO] Seeding sample upload jobs at startup");
         seed();
     }
 
     @Scheduled(cron = "0 0/30 * * * *")
     public void resetOnSchedule() {
+        if (environment.acceptsProfiles(DEVTOOLS)) {
+            log.info("[DEMO] devtools profile active - skipping scheduled reset");
+            return;
+        }
         log.info("[DEMO] Resetting demo state");
         seed();
     }
