@@ -192,6 +192,28 @@ class QueueE2ETest extends BaseE2ETest {
         assertThat(page.locator("a.nav-link[href='/queue']")).not().hasClass(Pattern.compile("\\bactive\\b"));
     }
 
+    // --- Scenario 15: Mobile viewport hides nav labels but keeps icons clickable ---
+
+    @Test
+    void mobileViewport_navIsIconOnly() {
+        page.setViewportSize(360, 800);
+        page.navigate(baseUrl() + "/queue");
+
+        // Icons remain visible
+        assertThat(page.locator("a.nav-link[href='/queue'] i.bi-collection-play")).isVisible();
+        assertThat(page.locator("a.nav-link[href='/queue/archive'] i.bi-archive")).isVisible();
+        assertThat(page.locator("a.nav-link[href='/settings'] i.bi-gear")).isVisible();
+
+        // Labels are hidden via CSS
+        assertThat(page.locator("a.nav-link[href='/queue'] .nav-label")).isHidden();
+        assertThat(page.locator("a.nav-link[href='/queue/archive'] .nav-label")).isHidden();
+        assertThat(page.locator("a.nav-link[href='/settings'] .nav-label")).isHidden();
+
+        // Icon-only link is still tappable
+        page.locator("a.nav-link[href='/queue/archive']").click();
+        page.waitForURL(baseUrl() + "/queue/archive");
+    }
+
     // --- Scenario 13: Card markup is identical on /queue and /queue/archive ---
 
     @Test
