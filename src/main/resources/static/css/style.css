@@ -101,6 +101,19 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font); }
 }
 .btn-logout:hover { background: var(--bg-subtle); color: var(--text); }
 
+@media (max-width: 575.98px) {
+    .nav-label {
+        display: none;
+    }
+    .navbar-nav .nav-link {
+        padding: 6px 8px !important;
+        gap: 0;
+        width: 36px;
+        height: 36px;
+        justify-content: center;
+    }
+}
+
 /* Demo mode banner */
 .alert-info {
     background: var(--bg-subtle) !important;
