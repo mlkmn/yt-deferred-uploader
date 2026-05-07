@@ -36,6 +36,7 @@ public class SettingsController {
     @GetMapping("/settings")
     public String showSettings(Model model) {
         model.addAttribute("appMode", appProperties.getMode());
+        model.addAttribute("activePage", "settings");
 
         model.addAttribute("defaultDescription",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
@@ -68,6 +69,7 @@ public class SettingsController {
     @GetMapping("/settings/oauth/consent")
     public String showOAuthConsent(Model model) {
         model.addAttribute("appMode", appProperties.getMode());
+        model.addAttribute("activePage", "settings");
         return "oauth-consent";
     }
 

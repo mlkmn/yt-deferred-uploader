@@ -165,20 +165,31 @@ class QueueE2ETest extends BaseE2ETest {
         assertThat(page.locator(".badge.text-bg-danger")).hasCount(0);
     }
 
-    // --- Scenario 12: Cross-links between /queue and /queue/archive ---
+    // --- Scenario 12: Top-nav navigates between /queue and /queue/archive ---
 
     @Test
-    void crossLinks_navigateBetweenQueueAndArchive() {
+    void topNav_navigatesBetweenQueueAndArchive() {
         testJobSeeder().seedPending("Linker");
         page.navigate(baseUrl() + "/queue");
 
-        page.getByRole(AriaRole.LINK,
-                new Page.GetByRoleOptions().setName(Pattern.compile("View archive"))).click();
+        page.locator("a.nav-link[href='/queue/archive']").click();
         page.waitForURL(baseUrl() + "/queue/archive");
 
-        page.getByRole(AriaRole.LINK,
-                new Page.GetByRoleOptions().setName(Pattern.compile("Back to queue"))).click();
+        page.locator("a.nav-link[href='/queue']").click();
         page.waitForURL(baseUrl() + "/queue");
+    }
+
+    // --- Scenario 14: Top-nav active state reflects current page ---
+
+    @Test
+    void navActiveState_reflectsCurrentPage() {
+        page.navigate(baseUrl() + "/queue");
+        assertThat(page.locator("a.nav-link[href='/queue']")).hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/queue/archive']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+
+        page.navigate(baseUrl() + "/queue/archive");
+        assertThat(page.locator("a.nav-link[href='/queue/archive']")).hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/queue']")).not().hasClass(Pattern.compile("\\bactive\\b"));
     }
 
     // --- Scenario 13: Card markup is identical on /queue and /queue/archive ---
