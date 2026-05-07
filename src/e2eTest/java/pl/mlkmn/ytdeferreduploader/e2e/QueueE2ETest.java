@@ -186,10 +186,31 @@ class QueueE2ETest extends BaseE2ETest {
         page.navigate(baseUrl() + "/queue");
         assertThat(page.locator("a.nav-link[href='/queue']")).hasClass(Pattern.compile("\\bactive\\b"));
         assertThat(page.locator("a.nav-link[href='/queue/archive']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/settings']")).not().hasClass(Pattern.compile("\\bactive\\b"));
 
         page.navigate(baseUrl() + "/queue/archive");
         assertThat(page.locator("a.nav-link[href='/queue/archive']")).hasClass(Pattern.compile("\\bactive\\b"));
         assertThat(page.locator("a.nav-link[href='/queue']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/settings']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+
+        page.navigate(baseUrl() + "/settings");
+        assertThat(page.locator("a.nav-link[href='/settings']")).hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/queue']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+        assertThat(page.locator("a.nav-link[href='/queue/archive']")).not().hasClass(Pattern.compile("\\bactive\\b"));
+    }
+
+    // --- Scenario 16: pageTitle reflects current page ---
+
+    @Test
+    void pageTitle_reflectsCurrentPage() {
+        page.navigate(baseUrl() + "/queue");
+        assertThat(page).hasTitle("Queue - YT Deferred Uploader");
+
+        page.navigate(baseUrl() + "/queue/archive");
+        assertThat(page).hasTitle("Archive - YT Deferred Uploader");
+
+        page.navigate(baseUrl() + "/settings");
+        assertThat(page).hasTitle("Settings - YT Deferred Uploader");
     }
 
     // --- Scenario 15: Mobile viewport hides nav labels but keeps icons clickable ---
