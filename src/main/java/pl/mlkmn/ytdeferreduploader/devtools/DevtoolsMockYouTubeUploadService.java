@@ -1,7 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.devtools;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
@@ -30,7 +29,6 @@ public class DevtoolsMockYouTubeUploadService implements YouTubeUploadService {
     private final MockOutcomeStore store;
     private final Sleeper sleeper;
 
-    @Autowired
     public DevtoolsMockYouTubeUploadService(MockOutcomeStore store, Sleeper sleeper) {
         this.store = store;
         this.sleeper = sleeper;
