@@ -43,6 +43,7 @@ public class QueueController {
         model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         model.addAttribute("appMode", appProperties.getMode());
         model.addAttribute("activePage", "queue");
+        model.addAttribute("pageTitle", "Queue");
 
         boolean connected = credentialService.isConnected();
         model.addAttribute("youtubeConnected", connected);
@@ -71,6 +72,7 @@ public class QueueController {
         model.addAttribute("totalPages", pageOfJobs.getTotalPages());
         model.addAttribute("appMode", appProperties.getMode());
         model.addAttribute("activePage", "archive");
+        model.addAttribute("pageTitle", "Archive");
         return "archive";
     }
 

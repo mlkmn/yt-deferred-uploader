@@ -37,6 +37,7 @@ public class SettingsController {
     public String showSettings(Model model) {
         model.addAttribute("appMode", appProperties.getMode());
         model.addAttribute("activePage", "settings");
+        model.addAttribute("pageTitle", "Settings");
 
         model.addAttribute("defaultDescription",
                 settingsService.getOrDefault(SettingsService.KEY_DEFAULT_DESCRIPTION, ""));
@@ -70,6 +71,7 @@ public class SettingsController {
     public String showOAuthConsent(Model model) {
         model.addAttribute("appMode", appProperties.getMode());
         model.addAttribute("activePage", "settings");
+        model.addAttribute("pageTitle", "Connect YouTube");
         return "oauth-consent";
     }
 
