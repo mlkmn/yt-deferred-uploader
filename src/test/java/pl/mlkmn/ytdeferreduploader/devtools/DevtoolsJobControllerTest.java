@@ -39,6 +39,7 @@ class DevtoolsJobControllerTest {
     @BeforeEach
     void setUp() {
         jobRepository.deleteAll();
+        outcomeStore.clear();
     }
 
     @Test

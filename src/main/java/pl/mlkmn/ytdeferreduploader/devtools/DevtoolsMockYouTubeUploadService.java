@@ -1,5 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.devtools;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
@@ -16,6 +17,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @Service
 @Primary
+@RequiredArgsConstructor
 @Profile("devtools")
 @ConditionalOnProperty(name = "app.mode", havingValue = "DEMO")
 public class DevtoolsMockYouTubeUploadService implements YouTubeUploadService {
@@ -28,11 +30,6 @@ public class DevtoolsMockYouTubeUploadService implements YouTubeUploadService {
 
     private final MockOutcomeStore store;
     private final Sleeper sleeper;
-
-    public DevtoolsMockYouTubeUploadService(MockOutcomeStore store, Sleeper sleeper) {
-        this.store = store;
-        this.sleeper = sleeper;
-    }
 
     @Override
     public String upload(UploadJob job) {

@@ -21,4 +21,8 @@ public class MockOutcomeStore {
     public Optional<MockOutcome> consume(Long jobId) {
         return Optional.ofNullable(outcomes.remove(jobId));
     }
+
+    public void clear() {
+        outcomes.clear();
+    }
 }

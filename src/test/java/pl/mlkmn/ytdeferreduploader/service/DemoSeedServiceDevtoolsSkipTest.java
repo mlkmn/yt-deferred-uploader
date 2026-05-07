@@ -49,4 +49,15 @@ class DemoSeedServiceDevtoolsSkipTest {
         verify(repo, times(1)).deleteAll();
         verify(repo, times(1)).saveAll(any());
     }
+
+    @Test
+    void resetOnSchedule_devtoolsInactive_seedsAsBefore() {
+        when(env.acceptsProfiles(any(Profiles.class))).thenReturn(false);
+        DemoSeedService service = new DemoSeedService(repo, env);
+
+        service.resetOnSchedule();
+
+        verify(repo, times(1)).deleteAll();
+        verify(repo, times(1)).saveAll(any());
+    }
 }
