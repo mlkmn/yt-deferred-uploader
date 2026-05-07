@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -139,7 +140,7 @@ public class TitleGenerator {
                         Integer.parseInt(dateOnly.group(1)),
                         Integer.parseInt(dateOnly.group(2)),
                         Integer.parseInt(dateOnly.group(3)));
-                LocalDateTime dateTime = date.atTime(java.time.LocalTime.now());
+                LocalDateTime dateTime = date.atTime(LocalTime.now());
                 return TITLE_FORMAT.format(dateTime);
             } catch (Exception e) {
                 log.warn("Matched date pattern in filename '{}' but could not parse: {}", filename, e.getMessage());

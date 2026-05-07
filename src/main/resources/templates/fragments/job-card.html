@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="card(job)" class="job-card">
+    <div class="job-card-inner">
+
+        <div class="job-card-stripe"
+             th:classappend="${job.status.name() == 'PENDING'   ? 'stripe-pending'   :
+                              job.status.name() == 'UPLOADING'  ? 'stripe-uploading'  :
+                              job.status.name() == 'COMPLETED'  ? 'stripe-completed'  :
+                              job.status.name() == 'FAILED'     ? 'stripe-failed'     :
+                              'stripe-cancelled'}"></div>
+
+        <div class="job-card-body">
+            <div class="job-title" th:text="${job.title}"></div>
+            <div class="job-filename" th:if="${job.driveFileName != null}" th:text="${job.driveFileName}"></div>
+
+            <div class="upload-progress" th:if="${job.status.name() == 'UPLOADING'}">
+                <div class="upload-progress-bar"></div>
+            </div>
+
+            <div class="job-meta">
+                <span class="job-size"
+                      th:text="${job.fileSizeBytes != null ? #numbers.formatDecimal(job.fileSizeBytes / 1048576.0, 1, 1) + ' MB' : '-'}"></span>
+                <span class="badge text-bg-secondary" th:text="${job.privacyStatus}"></span>
+                <span class="badge"
+                      th:classappend="${job.status.name() == 'PENDING'   ? 'text-bg-warning' :
+                                       job.status.name() == 'UPLOADING'  ? 'text-bg-info'    :
+                                       job.status.name() == 'COMPLETED'  ? 'text-bg-success' :
+                                       job.status.name() == 'FAILED'     ? 'text-bg-danger'  :
+                                       'text-bg-dark'}"
+                      th:text="${job.status}"></span>
+            </div>
+
+            <div th:if="${job.errorMessage}" class="job-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <span th:text="${job.errorMessage}"></span>
+            </div>
+
+            <div class="job-footer">
+                <div class="job-actions">
+                    <form th:if="${job.status.name() == 'PENDING'}"
+                          th:action="@{/queue/{id}/cancel(id=${job.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('Cancel this job?')">Cancel</button>
+                    </form>
+                    <form th:if="${job.status.name() == 'FAILED' or job.status.name() == 'CANCELLED'}"
+                          th:action="@{/queue/{id}/retry(id=${job.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-outline-warning btn-sm">Retry</button>
+                    </form>
+                    <a th:if="${job.status.name() == 'COMPLETED' and job.youtubeId != null}"
+                       th:href="'https://youtu.be/' + ${job.youtubeId}"
+                       target="_blank" class="btn btn-outline-success btn-sm">View on YouTube</a>
+                    <form th:if="${job.status.name() != 'UPLOADING'}"
+                          th:action="@{/queue/{id}/delete(id=${job.id})}" method="post" style="display:inline">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"
+                                onclick="return confirm('Delete this job?')">Delete</button>
+                    </form>
+                </div>
+                <div class="job-timestamp" th:if="${job.createdAt != null}">
+                    <span class="job-ts-date">
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="13" rx="2"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="5" y1="1" x2="5" y2="4"/><line x1="11" y1="1" x2="11" y2="4"/></svg>
+                        <span class="job-ts-date-text" th:attr="data-datetime=${job.createdAt.toString()}"></span>
+                    </span>
+                    <span class="job-ts-time">
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 10.5,10"/></svg>
+                        <span class="job-ts-time-text" th:attr="data-datetime=${job.createdAt.toString()}"></span>
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

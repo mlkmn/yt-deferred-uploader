@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: html}" th:with="view='archive',activePage='archive',pageTitle='Archive'">
+<body>
+<div th:fragment="content">
+
+    <!-- Page header -->
+    <div class="page-header">
+        <div>
+            <div class="page-title">Archive</div>
+        </div>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${#lists.isEmpty(jobs)}" class="empty-queue">
+        <i class="bi bi-archive"></i>
+        <h5>No archived jobs</h5>
+        <p>Completed and cancelled jobs will appear here.</p>
+    </div>
+
+    <!-- Cards -->
+    <div th:unless="${#lists.isEmpty(jobs)}">
+        <th:block th:each="job : ${jobs}">
+            <div th:replace="~{fragments/job-card :: card(${job})}"></div>
+        </th:block>
+
+        <!-- Pagination -->
+        <nav th:if="${totalPages > 1}" class="d-flex justify-content-center mt-4" aria-label="Archive pagination">
+            <ul class="pagination">
+                <li class="page-item" th:classappend="${currentPage == 0} ? ' disabled'">
+                    <a class="page-link" th:href="@{/queue/archive(page=${currentPage - 1})}">Previous</a>
+                </li>
+                <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}" class="page-item"
+                    th:classappend="${i == currentPage} ? ' active'">
+                    <a class="page-link" th:href="@{/queue/archive(page=${i})}" th:text="${i + 1}"></a>
+                </li>
+                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'">
+                    <a class="page-link" th:href="@{/queue/archive(page=${currentPage + 1})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Local time formatting (mirrors queue.html) -->
+    <script>
+        (function () {
+            const pad = n => String(n).padStart(2, '0');
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            document.querySelectorAll('.job-ts-date-text[data-datetime]').forEach(el => {
+                const dt = new Date(el.dataset.datetime);
+                if (isNaN(dt.getTime())) return;
+                const today = new Date();
+                const isToday = dt.getFullYear() === today.getFullYear() &&
+                                dt.getMonth() === today.getMonth() &&
+                                dt.getDate() === today.getDate();
+                el.textContent = isToday ? 'Today' : `${months[dt.getMonth()]} ${dt.getDate()}`;
+                el.title = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+            });
+            document.querySelectorAll('.job-ts-time-text[data-datetime]').forEach(el => {
+                const dt = new Date(el.dataset.datetime);
+                if (isNaN(dt.getTime())) return;
+                el.textContent = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+            });
+        })();
+    </script>
+
+</div>
+</body>
+</html>

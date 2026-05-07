@@ -1,5 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.e2e;
 
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,7 @@ class SmokeTest extends BaseE2ETest {
         assertThat(page.getByLabel("Username")).isVisible();
         assertThat(page.getByLabel("Password")).isVisible();
         assertThat(page.getByRole(AriaRole.BUTTON,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign in"))).isVisible();
+                new Page.GetByRoleOptions().setName("Sign in"))).isVisible();
     }
 
     @Test
@@ -27,7 +28,7 @@ class SmokeTest extends BaseE2ETest {
         page.getByLabel("Username").fill(VALID_USERNAME);
         page.getByLabel("Password").fill(VALID_PASSWORD);
         page.getByRole(AriaRole.BUTTON,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign in")).click();
+                new Page.GetByRoleOptions().setName("Sign in")).click();
 
         assertThat(page).hasURL(baseUrl() + "/queue");
         assertThat(page.getByText("Upload Queue")).isVisible();
@@ -39,7 +40,7 @@ class SmokeTest extends BaseE2ETest {
         page.getByLabel("Username").fill("not-a-real-user");
         page.getByLabel("Password").fill("not-a-real-password");
         page.getByRole(AriaRole.BUTTON,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign in")).click();
+                new Page.GetByRoleOptions().setName("Sign in")).click();
 
         assertThat(page).hasURL(baseUrl() + "/login?error");
         assertThat(page.getByText("Invalid username or password. Please try again.")).isVisible();
@@ -58,7 +59,7 @@ class SmokeTest extends BaseE2ETest {
         page.getByLabel("Username").fill(VALID_USERNAME);
         page.getByLabel("Password").fill(VALID_PASSWORD);
         page.getByRole(AriaRole.BUTTON,
-                new com.microsoft.playwright.Page.GetByRoleOptions().setName("Sign in")).click();
+                new Page.GetByRoleOptions().setName("Sign in")).click();
 
         page.navigate(baseUrl() + "/settings");
 

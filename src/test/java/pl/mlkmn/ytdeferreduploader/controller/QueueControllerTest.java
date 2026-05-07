@@ -19,10 +19,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.Instant;
 
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -200,6 +204,106 @@ class QueueControllerTest {
                 .andExpect(flash().attributeExists("success"));
 
         assertTrue(jobRepository.findById(job.getId()).isEmpty());
+    }
+
+    // --- GET /queue ---
+
+    @Test
+    void showQueue_includesActiveAndFailedJobs() throws Exception {
+        UploadJob pending = createJob(UploadStatus.PENDING);
+        UploadJob uploading = createJob(UploadStatus.UPLOADING);
+        UploadJob failed = createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("queue"))
+                .andExpect(model().attribute("jobs", hasItems(
+                        hasProperty("id", is(pending.getId())),
+                        hasProperty("id", is(uploading.getId())),
+                        hasProperty("id", is(failed.getId())))))
+                .andExpect(model().attribute("hasActiveJobs", true));
+    }
+
+    @Test
+    void showQueue_includesRecentlyCompletedJobs() throws Exception {
+        UploadJob completed = createJob(UploadStatus.COMPLETED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", hasItem(
+                        hasProperty("id", is(completed.getId())))));
+    }
+
+    @Test
+    void showQueue_hasActiveJobsFalseWhenOnlyTerminalStates() throws Exception {
+        createJob(UploadStatus.COMPLETED);
+        createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("hasActiveJobs", false));
+    }
+
+    @Test
+    void queueTable_returnsFragmentView() throws Exception {
+        createJob(UploadStatus.PENDING);
+
+        mockMvc.perform(get("/queue/table"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("queue :: jobTable"));
+    }
+
+    // --- GET /queue/archive ---
+
+    @Test
+    void archive_returnsCompletedAndCancelledJobs() throws Exception {
+        UploadJob completed = createJob(UploadStatus.COMPLETED);
+        UploadJob cancelled = createJob(UploadStatus.CANCELLED);
+        createJob(UploadStatus.FAILED);
+        createJob(UploadStatus.PENDING);
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("archive"))
+                .andExpect(model().attribute("jobs", hasItems(
+                        hasProperty("id", is(completed.getId())),
+                        hasProperty("id", is(cancelled.getId())))))
+                .andExpect(model().attribute("currentPage", 0));
+    }
+
+    @Test
+    void archive_excludesFailedJobs() throws Exception {
+        createJob(UploadStatus.FAILED);
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", empty()));
+    }
+
+    @Test
+    void archive_paginatesAt25PerPage() throws Exception {
+        for (int i = 0; i < 30; i++) {
+            createJob(UploadStatus.COMPLETED);
+        }
+
+        mockMvc.perform(get("/queue/archive"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", hasSize(25)))
+                .andExpect(model().attribute("totalPages", 2));
+
+        mockMvc.perform(get("/queue/archive").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", hasSize(5)))
+                .andExpect(model().attribute("currentPage", 1));
+    }
+
+    @Test
+    void archive_outOfRangePageRendersEmpty() throws Exception {
+        createJob(UploadStatus.COMPLETED);
+
+        mockMvc.perform(get("/queue/archive").param("page", "99"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("jobs", empty()));
     }
 
     private UploadJob createJob(UploadStatus status) {

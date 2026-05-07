@@ -2,11 +2,13 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -35,11 +38,11 @@ public class QueueController {
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = fetchActiveAndRecentJobs();
         model.addAttribute("jobs", jobs);
-        model.addAttribute("hasActiveJobs", jobs.stream()
-                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         model.addAttribute("appMode", appProperties.getMode());
+        model.addAttribute("activePage", "queue");
 
         boolean connected = credentialService.isConnected();
         model.addAttribute("youtubeConnected", connected);
@@ -52,11 +55,37 @@ public class QueueController {
 
     @GetMapping("/queue/table")
     public String queueTableFragment(Model model) {
-        var jobs = uploadJobRepository.findAllByOrderByCreatedAtDesc();
+        var jobs = fetchActiveAndRecentJobs();
         model.addAttribute("jobs", jobs);
-        model.addAttribute("hasActiveJobs", jobs.stream()
-                .anyMatch(j -> j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING));
+        model.addAttribute("hasActiveJobs", hasActiveJobs(jobs));
         return "queue :: jobTable";
+    }
+
+    @GetMapping("/queue/archive")
+    public String showArchive(@RequestParam(defaultValue = "0") int page, Model model) {
+        var pageOfJobs = uploadJobRepository.findByStatusInOrderByCreatedAtDesc(
+                List.of(UploadStatus.COMPLETED, UploadStatus.CANCELLED),
+                PageRequest.of(page, 25));
+        model.addAttribute("jobs", pageOfJobs.getContent());
+        model.addAttribute("currentPage", pageOfJobs.getNumber());
+        model.addAttribute("totalPages", pageOfJobs.getTotalPages());
+        model.addAttribute("appMode", appProperties.getMode());
+        model.addAttribute("activePage", "archive");
+        return "archive";
+    }
+
+    private List<UploadJob> fetchActiveAndRecentJobs() {
+        Instant cutoff = Instant.now().minusSeconds(
+                appProperties.getQueue().getRecentWindowSeconds());
+        return uploadJobRepository.findActiveAndRecent(
+                List.of(UploadStatus.PENDING, UploadStatus.UPLOADING, UploadStatus.FAILED),
+                List.of(UploadStatus.COMPLETED, UploadStatus.CANCELLED),
+                cutoff);
+    }
+
+    private boolean hasActiveJobs(List<UploadJob> jobs) {
+        return jobs.stream().anyMatch(j ->
+                j.getStatus() == UploadStatus.PENDING || j.getStatus() == UploadStatus.UPLOADING);
     }
 
     @PostMapping("/queue/{id}/cancel")

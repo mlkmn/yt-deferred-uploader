@@ -11,9 +11,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
+import pl.mlkmn.ytdeferreduploader.e2e.support.TestJobSeeder;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +29,9 @@ public abstract class BaseE2ETest {
 
     @LocalServerPort
     protected int port;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     protected static Playwright playwright;
     protected static Browser browser;
@@ -67,6 +73,10 @@ public abstract class BaseE2ETest {
 
     protected String baseUrl() {
         return "http://localhost:" + port;
+    }
+
+    protected TestJobSeeder testJobSeeder() {
+        return applicationContext.getBean(TestJobSeeder.class);
     }
 
     private static String sanitize(String name) {
