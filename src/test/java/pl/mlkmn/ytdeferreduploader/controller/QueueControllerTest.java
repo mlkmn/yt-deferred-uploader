@@ -19,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.Instant;
 
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -216,10 +217,10 @@ class QueueControllerTest {
         mockMvc.perform(get("/queue"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("queue"))
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItems(
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(pending.getId())),
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(uploading.getId())),
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(failed.getId())))))
+                .andExpect(model().attribute("jobs", hasItems(
+                        hasProperty("id", is(pending.getId())),
+                        hasProperty("id", is(uploading.getId())),
+                        hasProperty("id", is(failed.getId())))))
                 .andExpect(model().attribute("hasActiveJobs", true));
     }
 
@@ -229,8 +230,8 @@ class QueueControllerTest {
 
         mockMvc.perform(get("/queue"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItem(
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(completed.getId())))));
+                .andExpect(model().attribute("jobs", hasItem(
+                        hasProperty("id", is(completed.getId())))));
     }
 
     @Test
@@ -264,9 +265,9 @@ class QueueControllerTest {
         mockMvc.perform(get("/queue/archive"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("archive"))
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasItems(
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(completed.getId())),
-                        org.hamcrest.Matchers.hasProperty("id", org.hamcrest.Matchers.is(cancelled.getId())))))
+                .andExpect(model().attribute("jobs", hasItems(
+                        hasProperty("id", is(completed.getId())),
+                        hasProperty("id", is(cancelled.getId())))))
                 .andExpect(model().attribute("currentPage", 0));
     }
 
@@ -276,7 +277,7 @@ class QueueControllerTest {
 
         mockMvc.perform(get("/queue/archive"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.empty()));
+                .andExpect(model().attribute("jobs", empty()));
     }
 
     @Test
@@ -287,12 +288,12 @@ class QueueControllerTest {
 
         mockMvc.perform(get("/queue/archive"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasSize(25)))
+                .andExpect(model().attribute("jobs", hasSize(25)))
                 .andExpect(model().attribute("totalPages", 2));
 
         mockMvc.perform(get("/queue/archive").param("page", "1"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.hasSize(5)))
+                .andExpect(model().attribute("jobs", hasSize(5)))
                 .andExpect(model().attribute("currentPage", 1));
     }
 
@@ -302,7 +303,7 @@ class QueueControllerTest {
 
         mockMvc.perform(get("/queue/archive").param("page", "99"))
                 .andExpect(status().isOk())
-                .andExpect(model().attribute("jobs", org.hamcrest.Matchers.empty()));
+                .andExpect(model().attribute("jobs", empty()));
     }
 
     private UploadJob createJob(UploadStatus status) {
