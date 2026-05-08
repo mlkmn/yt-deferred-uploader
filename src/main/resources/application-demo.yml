@@ -1,5 +1,9 @@
 app:
   mode: DEMO
+  scheduler:
+    poll-interval-ms: 3000
+  queue:
+    recent-window-seconds: 30
 
 spring:
   datasource:
