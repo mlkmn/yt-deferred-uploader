@@ -614,6 +614,55 @@ small, .small { color: var(--text-muted); }
     font-weight: 600 !important;
 }
 
+/* ── Pagination — compact stepper ── */
+.pg-region {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+.stepper {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: var(--shadow-sm);
+    font-variant-numeric: tabular-nums;
+}
+.stepper .step-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: color .15s, background .15s;
+}
+.stepper .step-btn:hover {
+    color: var(--text);
+    background: var(--bg-subtle);
+}
+.stepper .step-btn.disabled {
+    opacity: .3;
+    pointer-events: none;
+}
+.stepper .step-btn i { font-size: 14px; }
+.stepper .step-readout {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.2px;
+}
+.stepper .step-readout .of { color: var(--text-muted); font-weight: 600; }
+.stepper .step-readout .total { color: var(--text-mid); font-weight: 700; }
+
 /* ── Animations ── */
 @keyframes pulse {
     0%, 100% { opacity: 1; }
