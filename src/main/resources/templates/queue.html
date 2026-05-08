@@ -37,7 +37,7 @@
         </div>
         <div class="card-body">
             <form th:action="@{/devtools/mock-job}" method="post" class="row g-2 align-items-end">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <label for="devtools-title" class="form-label small mb-1">Title</label>
                     <input id="devtools-title" name="title" type="text" class="form-control form-control-sm"
                            required maxlength="100" placeholder="Mock upload"/>
@@ -46,6 +46,11 @@
                     <label for="devtools-size" class="form-label small mb-1">Size (MB)</label>
                     <input id="devtools-size" name="fileSizeMb" type="number" class="form-control form-control-sm"
                            min="1" value="50"/>
+                </div>
+                <div class="col-6 col-md-1">
+                    <label for="devtools-count" class="form-label small mb-1">Count</label>
+                    <input id="devtools-count" name="count" type="number" class="form-control form-control-sm"
+                           min="1" max="50" value="1"/>
                 </div>
                 <div class="col-6 col-md-2">
                     <label for="devtools-privacy" class="form-label small mb-1">Privacy</label>

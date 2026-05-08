@@ -83,4 +83,60 @@ class DevtoolsJobControllerTest {
         assertEquals(Optional.of(MockOutcome.SUCCESS),
                 outcomeStore.consume(job.getId()));
     }
+
+    @Test
+    void postMockJob_count3_persistsThreeSuffixedJobsAndRegistersOutcomeForEach() throws Exception {
+        mockMvc.perform(post("/devtools/mock-job")
+                        .with(csrf())
+                        .param("title", "Batch")
+                        .param("privacyStatus", "PRIVATE")
+                        .param("outcome", "PERMANENT_FAILURE")
+                        .param("count", "3"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/queue"))
+                .andExpect(flash().attribute("success",
+                        org.hamcrest.Matchers.containsString("3 mock jobs")));
+
+        List<UploadJob> jobs = jobRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(UploadJob::getId))
+                .toList();
+        assertEquals(3, jobs.size(), "exactly three jobs persisted");
+        assertEquals(List.of("Batch #1", "Batch #2", "Batch #3"),
+                jobs.stream().map(UploadJob::getTitle).toList());
+        assertEquals(List.of("Batch #1.mp4", "Batch #2.mp4", "Batch #3.mp4"),
+                jobs.stream().map(UploadJob::getDriveFileName).toList());
+        for (UploadJob j : jobs) {
+            assertEquals(UploadStatus.PENDING, j.getStatus());
+            assertEquals(Optional.of(MockOutcome.PERMANENT_FAILURE),
+                    outcomeStore.consume(j.getId()));
+        }
+    }
+
+    @Test
+    void postMockJob_countOmitted_persistsOneUnsuffixedJob() throws Exception {
+        mockMvc.perform(post("/devtools/mock-job")
+                        .with(csrf())
+                        .param("title", "Solo")
+                        .param("privacyStatus", "PRIVATE")
+                        .param("outcome", "SUCCESS"))
+                .andExpect(status().is3xxRedirection());
+
+        List<UploadJob> jobs = jobRepository.findAll();
+        assertEquals(1, jobs.size());
+        assertEquals("Solo", jobs.get(0).getTitle(), "no '#1' suffix when count defaults to 1");
+        assertEquals("Solo.mp4", jobs.get(0).getDriveFileName());
+    }
+
+    @Test
+    void postMockJob_countAboveMax_isClampedTo50() throws Exception {
+        mockMvc.perform(post("/devtools/mock-job")
+                        .with(csrf())
+                        .param("title", "Flood")
+                        .param("privacyStatus", "PRIVATE")
+                        .param("outcome", "SUCCESS")
+                        .param("count", "999"))
+                .andExpect(status().is3xxRedirection());
+
+        assertEquals(50, jobRepository.findAll().size(), "count clamped to MAX_BATCH=50");
+    }
 }
