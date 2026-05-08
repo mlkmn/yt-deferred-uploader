@@ -2,6 +2,8 @@ package pl.mlkmn.ytdeferreduploader.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -35,6 +37,9 @@ public class QueueController {
     private final GoogleDriveService driveService;
     private final AppProperties appProperties;
     private final YouTubeCredentialService credentialService;
+    private final Environment environment;
+
+    private static final Profiles DEVTOOLS = Profiles.of("devtools");
 
     @GetMapping("/queue")
     public String showQueue(Model model) {
@@ -44,6 +49,7 @@ public class QueueController {
         model.addAttribute("appMode", appProperties.getMode());
         model.addAttribute("activePage", "queue");
         model.addAttribute("pageTitle", "Queue");
+        model.addAttribute("devtoolsEnabled", environment.acceptsProfiles(DEVTOOLS));
 
         boolean connected = credentialService.isConnected();
         model.addAttribute("youtubeConnected", connected);

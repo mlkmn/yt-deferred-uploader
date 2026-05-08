@@ -1,7 +1,6 @@
 package pl.mlkmn.ytdeferreduploader.e2e;
 
 import com.microsoft.playwright.APIResponse;
-import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.options.AriaRole;
@@ -132,19 +131,18 @@ class QueueE2ETest extends BaseE2ETest {
         page.navigate(baseUrl() + "/queue/archive");
         assertThat(page.locator(".job-card")).hasCount(25);
 
-        var prevLi = page.locator("li.page-item").filter(
-                new Locator.FilterOptions().setHasText("Previous"));
-        var nextLi = page.locator("li.page-item").filter(
-                new Locator.FilterOptions().setHasText("Next"));
-        assertThat(prevLi).hasClass(Pattern.compile("\\bdisabled\\b"));
-        assertThat(nextLi).not().hasClass(Pattern.compile("\\bdisabled\\b"));
+        var prevBtn = page.getByRole(AriaRole.LINK,
+                new Page.GetByRoleOptions().setName("Previous page"));
+        var nextBtn = page.getByRole(AriaRole.LINK,
+                new Page.GetByRoleOptions().setName("Next page"));
+        assertThat(prevBtn).hasClass(Pattern.compile("\\bdisabled\\b"));
+        assertThat(nextBtn).not().hasClass(Pattern.compile("\\bdisabled\\b"));
 
-        page.getByRole(AriaRole.LINK,
-                new Page.GetByRoleOptions().setName("Next")).click();
+        nextBtn.click();
         page.waitForURL(baseUrl() + "/queue/archive?page=1");
         assertThat(page.locator(".job-card")).hasCount(5);
-        assertThat(prevLi).not().hasClass(Pattern.compile("\\bdisabled\\b"));
-        assertThat(nextLi).hasClass(Pattern.compile("\\bdisabled\\b"));
+        assertThat(prevBtn).not().hasClass(Pattern.compile("\\bdisabled\\b"));
+        assertThat(nextBtn).hasClass(Pattern.compile("\\bdisabled\\b"));
 
         APIResponse outOfRange = page.request().get(baseUrl() + "/queue/archive?page=99");
         assertEquals(200, outOfRange.status());

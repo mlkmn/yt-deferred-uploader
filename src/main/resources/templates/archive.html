@@ -24,19 +24,30 @@
         </th:block>
 
         <!-- Pagination -->
-        <nav th:if="${totalPages > 1}" class="d-flex justify-content-center mt-4" aria-label="Archive pagination">
-            <ul class="pagination">
-                <li class="page-item" th:classappend="${currentPage == 0} ? ' disabled'">
-                    <a class="page-link" th:href="@{/queue/archive(page=${currentPage - 1})}">Previous</a>
-                </li>
-                <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}" class="page-item"
-                    th:classappend="${i == currentPage} ? ' active'">
-                    <a class="page-link" th:href="@{/queue/archive(page=${i})}" th:text="${i + 1}"></a>
-                </li>
-                <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'">
-                    <a class="page-link" th:href="@{/queue/archive(page=${currentPage + 1})}">Next</a>
-                </li>
-            </ul>
+        <nav th:if="${totalPages > 1}" class="pg-region" aria-label="Archive pagination">
+            <div class="stepper" role="group">
+                <a class="step-btn" th:classappend="${currentPage == 0} ? ' disabled'"
+                   th:href="@{/queue/archive(page=0)}" aria-label="First page">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+                <a class="step-btn" th:classappend="${currentPage == 0} ? ' disabled'"
+                   th:href="@{/queue/archive(page=${currentPage - 1})}" aria-label="Previous page">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <span class="step-readout" aria-live="polite">
+                    <span th:text="${currentPage + 1}">1</span>
+                    <span class="of">/</span>
+                    <span class="total" th:text="${totalPages}">1</span>
+                </span>
+                <a class="step-btn" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'"
+                   th:href="@{/queue/archive(page=${currentPage + 1})}" aria-label="Next page">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a class="step-btn" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'"
+                   th:href="@{/queue/archive(page=${totalPages - 1})}" aria-label="Last page">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </div>
         </nav>
     </div>
 
