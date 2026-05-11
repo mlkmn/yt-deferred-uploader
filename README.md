@@ -31,6 +31,8 @@ The `app.mode` property switches between two modes:
 - **SELF_HOSTED** (default) - the real app. You run your own Spring Boot instance against your own Google Cloud project and OAuth credentials. Form login, real Drive polling, real YouTube uploads.
 - **DEMO** - a fully-mocked sandbox. No Google APIs are called, no credentials needed. The four service classes (`YouTubeUploadService`, `GoogleDriveService`, `YouTubeCredentialService`, `YouTubePlaylistService`) are swapped for `Mock*` implementations via Spring's `@ConditionalOnProperty`. Data lives in in-memory H2, is seeded with four sample jobs at startup, and is wiped plus re-seeded every 30 minutes. Login is bypassed via an auto-login filter, and a top-of-page banner makes the mocked nature obvious. OAuth and account-deletion controls are hidden so the demo never offers actions whose only correct outcome is a no-op.
 
+An optional `devtools` Spring profile, layered on top of `DEMO`, swaps in a `DevtoolsMockYouTubeUploadService` with pre-assignable outcomes and adds a "Schedule mock job" form to `/queue` for hand-driving the pipeline (success / permanent failure, batch of up to 50). When `devtools` is active, automatic seeding/reset is skipped so hand-scheduled jobs are not wiped.
+
 ## Quick Start (SELF_HOSTED)
 
 ### Prerequisites
@@ -89,10 +91,19 @@ SPRING_PROFILES_ACTIVE=demo ./gradlew bootRun
 
 No environment variables needed. Visit http://localhost:8080 - you'll be auto-logged in and land on the queue with four pre-seeded jobs (one COMPLETED, one UPLOADING, one PENDING, one FAILED). The PENDING one transitions through UPLOADING to COMPLETED within 15 seconds via the mock upload service. A banner across the top of every page reminds you that all data is mocked and resets every 30 minutes.
 
+To drive jobs by hand (e.g. while iterating on the UI), add the `devtools` profile:
+
+```bash
+SPRING_PROFILES_ACTIVE=demo,devtools ./gradlew bootRun
+```
+
+This shortens the scheduler poll to 3s and the queue recency window to 30s, skips automatic seeding/reset, and renders a "Schedule mock job (devtools)" form on `/queue` that POSTs to `/devtools/mock-job` with title, size, privacy, outcome (SUCCESS / PERMANENT_FAILURE), and batch count (1-50).
+
 ## Features
 
 - **Drive folder polling** - point at a Drive folder; the app picks up new videos automatically
 - **Smart title generation** - extracts dates from filename patterns (Android, Samsung, Telegram, WhatsApp, iOS) or falls back to Drive's `modifiedTime`
+- **Active queue + paginated archive** - `/queue` shows active and FAILED jobs plus a recent tail of completed/cancelled (configurable window); `/queue/archive` paginates the rest (25 per page) with a compact stepper
 - **Queue dashboard** - HTMX-polled live updates, cancel/retry/delete per-job actions, timestamps rendered in the viewer's local timezone
 - **Quota-aware scheduling** - defers all pending jobs when YouTube returns 429, resumes at the next midnight
 - **Exponential backoff** - transient errors retry up to 3 times with growing delay
@@ -101,6 +112,7 @@ No environment variables needed. Visit http://localhost:8080 - you'll be auto-lo
 - **Auto-purge** - completed jobs deleted after a configurable retention window
 - **Account deletion** - revokes the OAuth token with Google and wipes all local state
 - **Encrypted token storage** - AES-256-GCM via `EncryptedStringConverter` when `ENCRYPTION_KEY` is set
+- **Responsive top nav** - Queue / Archive / Settings with active-state highlighting; collapses to icon-only at mobile widths
 - **Dark theme UI** - warm dark palette with Plus Jakarta Sans
 
 ### Security
@@ -122,7 +134,7 @@ No environment variables needed. Visit http://localhost:8080 - you'll be auto-lo
 | `ADMIN_PASSWORD` | No | `admin` | Login password (set this in production) |
 | `APP_YOUTUBE_REDIRECT_URI` | No | `http://localhost:8080/settings/oauth/callback` | OAuth callback URL |
 | `ENCRYPTION_KEY` | No | | Base64-encoded 32-byte key for AES-256-GCM token encryption |
-| `SPRING_PROFILES_ACTIVE` | No | | `prod` for production, `demo` for the mocked sandbox |
+| `SPRING_PROFILES_ACTIVE` | No | | `prod` for production, `demo` for the mocked sandbox, `demo,devtools` for the hand-driven mock pipeline |
 
 ### Google Cloud Setup (SELF_HOSTED only)
 
@@ -166,6 +178,7 @@ Additional properties in `application.yml` (overridable via environment variable
 | `app.scheduler.max-retries` | `3` | Max retries for transient failures |
 | `app.youtube.quota-reset-timezone` | `Europe/Warsaw` | Timezone for daily quota reset |
 | `app.cleanup.retention-hours` | `24` | Hours to keep terminal-status job metadata |
+| `app.queue.recent-window-seconds` | `300` | How long completed/cancelled jobs stay visible on `/queue` before moving to the archive view |
 
 ## Tech Stack
 
