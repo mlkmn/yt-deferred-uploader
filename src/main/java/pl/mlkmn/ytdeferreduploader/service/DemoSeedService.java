@@ -9,7 +9,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
 import pl.mlkmn.ytdeferreduploader.model.UploadJob;
 import pl.mlkmn.ytdeferreduploader.model.UploadStatus;
@@ -30,6 +30,7 @@ public class DemoSeedService {
 
     private final UploadJobRepository jobRepository;
     private final Environment environment;
+    private final TransactionTemplate transactionTemplate;
 
     @EventListener(ApplicationReadyEvent.class)
     public void seedOnStartup() {
@@ -38,7 +39,7 @@ public class DemoSeedService {
             return;
         }
         log.info("[DEMO] Seeding sample upload jobs at startup");
-        seed();
+        seedSafely("startup");
     }
 
     @Scheduled(cron = "0 0/30 * * * *")
@@ -48,18 +49,34 @@ public class DemoSeedService {
             return;
         }
         log.info("[DEMO] Resetting demo state");
-        seed();
+        seedSafely("scheduled reset");
     }
 
-    @Transactional
+    private void seedSafely(String trigger) {
+        try {
+            seed();
+        } catch (Exception e) {
+            // Issue #25: a seed failure must never escape an ApplicationReadyEvent
+            // listener (it fails SpringApplication.run() and crash-loops the
+            // container). The 30-minute reset is the natural retry.
+            log.warn("[DEMO] Seed failed at {}; state will converge at next scheduled reset",
+                    trigger, e);
+        }
+    }
+
+    // Programmatic transaction on purpose: @Transactional was silently inoperative
+    // here (self-invocation from the event listener bypassed the proxy - issue #25).
+    // The template makes the delete+insert atomic regardless of call path.
     public void seed() {
-        jobRepository.deleteAll();
-        jobRepository.saveAll(List.of(
-                buildCompleted(),
-                buildUploading(),
-                buildPending(),
-                buildFailed()
-        ));
+        transactionTemplate.executeWithoutResult(tx -> {
+            jobRepository.deleteAll();
+            jobRepository.saveAll(List.of(
+                    buildCompleted(),
+                    buildUploading(),
+                    buildPending(),
+                    buildFailed()
+            ));
+        });
     }
 
     private UploadJob buildCompleted() {

@@ -3,6 +3,8 @@ package pl.mlkmn.ytdeferreduploader.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import pl.mlkmn.ytdeferreduploader.repository.UploadJobRepository;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -16,11 +18,13 @@ class DemoSeedServiceDevtoolsSkipTest {
 
     private final UploadJobRepository repo = mock(UploadJobRepository.class);
     private final Environment env = mock(Environment.class);
+    private final TransactionTemplate txTemplate =
+            new TransactionTemplate(mock(PlatformTransactionManager.class));
 
     @Test
     void seedOnStartup_devtoolsActive_doesNotTouchRepository() {
         when(env.acceptsProfiles(any(Profiles.class))).thenReturn(true);
-        DemoSeedService service = new DemoSeedService(repo, env);
+        DemoSeedService service = new DemoSeedService(repo, env, txTemplate);
 
         service.seedOnStartup();
 
@@ -31,7 +35,7 @@ class DemoSeedServiceDevtoolsSkipTest {
     @Test
     void resetOnSchedule_devtoolsActive_doesNotTouchRepository() {
         when(env.acceptsProfiles(any(Profiles.class))).thenReturn(true);
-        DemoSeedService service = new DemoSeedService(repo, env);
+        DemoSeedService service = new DemoSeedService(repo, env, txTemplate);
 
         service.resetOnSchedule();
 
@@ -42,7 +46,7 @@ class DemoSeedServiceDevtoolsSkipTest {
     @Test
     void seedOnStartup_devtoolsInactive_seedsAsBefore() {
         when(env.acceptsProfiles(any(Profiles.class))).thenReturn(false);
-        DemoSeedService service = new DemoSeedService(repo, env);
+        DemoSeedService service = new DemoSeedService(repo, env, txTemplate);
 
         service.seedOnStartup();
 
@@ -53,7 +57,7 @@ class DemoSeedServiceDevtoolsSkipTest {
     @Test
     void resetOnSchedule_devtoolsInactive_seedsAsBefore() {
         when(env.acceptsProfiles(any(Profiles.class))).thenReturn(false);
-        DemoSeedService service = new DemoSeedService(repo, env);
+        DemoSeedService service = new DemoSeedService(repo, env, txTemplate);
 
         service.resetOnSchedule();
 
