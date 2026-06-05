@@ -42,7 +42,7 @@ spring:
       max-file-size: 500MB
       max-request-size: 500MB
   datasource:
-    url: jdbc:h2:file:./data/ytdeferreduploader
+    url: jdbc:h2:file:${APP_DB_PATH:./data/ytdeferreduploader}
     driver-class-name: org.h2.Driver
   jpa:
     open-in-view: false

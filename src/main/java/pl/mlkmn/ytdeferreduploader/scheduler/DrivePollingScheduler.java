@@ -3,6 +3,7 @@ package pl.mlkmn.ytdeferreduploader.scheduler;
 import com.google.api.services.drive.model.File;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
@@ -77,7 +78,16 @@ public class DrivePollingScheduler {
             job.setStatus(UploadStatus.PENDING);
             job.setScheduledAt(Instant.now());
 
-            jobRepository.save(job);
+            try {
+                jobRepository.save(job);
+            } catch (DataIntegrityViolationException e) {
+                // Issue #25: another writer (startup seeder, overlapping poll, or a
+                // manual job) inserted this drive_file_id between our exists-check
+                // and the save. The row exists, which is the desired end state.
+                log.debug("Drive file already queued concurrently, skipping: driveFileId={}",
+                        file.getId());
+                continue;
+            }
             created++;
             log.info("Drive file queued: jobId={}, driveFileId={}, name='{}', title='{}'",
                     job.getId(), file.getId(), file.getName(), job.getTitle());
