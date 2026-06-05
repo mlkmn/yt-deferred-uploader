@@ -28,6 +28,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 USER appuser
 
+ENV APP_DB_PATH=/app/data/ytdeferreduploader
+
 ENTRYPOINT ["java", "-jar", "app.jar", \
-    "--app.upload-dir=/app/uploads", \
-    "--spring.datasource.url=jdbc:h2:file:/app/data/ytdeferreduploader"]
+    "--app.upload-dir=/app/uploads"]
