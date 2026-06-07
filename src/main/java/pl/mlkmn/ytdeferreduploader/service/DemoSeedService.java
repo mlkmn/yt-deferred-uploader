@@ -56,20 +56,19 @@ public class DemoSeedService {
         try {
             seed();
         } catch (Exception e) {
-            // Issue #25: a seed failure must never escape an ApplicationReadyEvent
-            // listener (it fails SpringApplication.run() and crash-loops the
-            // container). The 30-minute reset is the natural retry.
+            // Must not propagate: an exception out of the ApplicationReadyEvent listener
+            // crash-loops startup; the 30-min reset retries (issue #25).
             log.warn("[DEMO] Seed failed at {}; state will converge at next scheduled reset",
                     trigger, e);
         }
     }
 
-    // Programmatic transaction on purpose: @Transactional was silently inoperative
-    // here (self-invocation from the event listener bypassed the proxy - issue #25).
-    // The template makes the delete+insert atomic regardless of call path.
+    // TransactionTemplate (not @Transactional): self-invocation from the event listener
+    // bypasses the proxy (#25). deleteAllInBatch (not deleteAll): Hibernate flushes
+    // INSERTs before DELETEs, so deleteAll would re-insert demo-3 first (#30).
     public void seed() {
         transactionTemplate.executeWithoutResult(tx -> {
-            jobRepository.deleteAll();
+            jobRepository.deleteAllInBatch();
             jobRepository.saveAll(List.of(
                     buildCompleted(),
                     buildUploading(),
