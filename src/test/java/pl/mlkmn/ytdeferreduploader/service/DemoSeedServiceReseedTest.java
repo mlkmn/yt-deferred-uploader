@@ -20,17 +20,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Regression test for issue #30: a scheduled reset re-seeds an already-populated
- * table. Within one Hibernate flush, INSERTs are ordered ahead of DELETEs, so the
- * new rows would be inserted before deleteAll()'s deletes reach the database -
- * colliding with the still-present demo-3 row on the drive_file_id unique index.
- *
- * Uses the real repository (no mocked saveAll) so the actual flush ordering against
- * a real schema is exercised - the gap that DemoSeedServiceAtomicityTest left.
- *
- * NOT_SUPPORTED propagation: the test must not own a transaction, so each seed()
- * commits in its own transaction and the second run sees a committed, populated
- * table (which is what reproduces the collision).
+ * Regression test for issue #30. Uses the real repository (not a mocked saveAll like
+ * DemoSeedServiceAtomicityTest) so Hibernate's real flush ordering is exercised.
+ * NOT_SUPPORTED: the test must not own a transaction, so each seed() commits and the
+ * second run sees a populated table - which is what reproduces the collision.
  */
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
