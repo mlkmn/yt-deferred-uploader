@@ -28,7 +28,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 USER appuser
 
-ENV APP_DB_PATH=/app/data/ytdeferreduploader
+# JVM memory tuning (see issue #28); overridable at runtime via -e JAVA_OPTS=...
+ENV APP_DB_PATH=/app/data/ytdeferreduploader \
+    JAVA_OPTS="-Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError" \
+    MALLOC_ARENA_MAX=2
 
-ENTRYPOINT ["java", "-jar", "app.jar", \
-    "--app.upload-dir=/app/uploads"]
+# sh -c + exec keeps java as PID 1 (signal handling) while expanding $JAVA_OPTS.
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar --app.upload-dir=/app/uploads"]
