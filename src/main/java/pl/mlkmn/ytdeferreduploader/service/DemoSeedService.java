@@ -67,9 +67,14 @@ public class DemoSeedService {
     // Programmatic transaction on purpose: @Transactional was silently inoperative
     // here (self-invocation from the event listener bypassed the proxy - issue #25).
     // The template makes the delete+insert atomic regardless of call path.
+    //
+    // deleteAllInBatch() (not deleteAll()) issues an immediate bulk DELETE: within a
+    // single Hibernate flush, INSERTs are ordered ahead of DELETEs, so on a reset the
+    // re-inserted demo-3 row would collide with the still-present one on the
+    // drive_file_id unique index (issue #30). The bulk delete runs before the inserts.
     public void seed() {
         transactionTemplate.executeWithoutResult(tx -> {
-            jobRepository.deleteAll();
+            jobRepository.deleteAllInBatch();
             jobRepository.saveAll(List.of(
                     buildCompleted(),
                     buildUploading(),

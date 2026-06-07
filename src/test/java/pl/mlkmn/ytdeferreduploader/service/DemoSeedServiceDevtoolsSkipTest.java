@@ -28,7 +28,7 @@ class DemoSeedServiceDevtoolsSkipTest {
 
         service.seedOnStartup();
 
-        verify(repo, never()).deleteAll();
+        verify(repo, never()).deleteAllInBatch();
         verify(repo, never()).saveAll(any());
     }
 
@@ -39,7 +39,7 @@ class DemoSeedServiceDevtoolsSkipTest {
 
         service.resetOnSchedule();
 
-        verify(repo, never()).deleteAll();
+        verify(repo, never()).deleteAllInBatch();
         verify(repo, never()).saveAll(any());
     }
 
@@ -50,7 +50,7 @@ class DemoSeedServiceDevtoolsSkipTest {
 
         service.seedOnStartup();
 
-        verify(repo, times(1)).deleteAll();
+        verify(repo, times(1)).deleteAllInBatch();
         verify(repo, times(1)).saveAll(any());
     }
 
@@ -61,7 +61,7 @@ class DemoSeedServiceDevtoolsSkipTest {
 
         service.resetOnSchedule();
 
-        verify(repo, times(1)).deleteAll();
+        verify(repo, times(1)).deleteAllInBatch();
         verify(repo, times(1)).saveAll(any());
     }
 }
