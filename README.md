@@ -1,3 +1,4 @@
+```markdown
 # YT Deferred Uploader
 
 A Spring Boot web app that buffers YouTube uploads from Google Drive around the YouTube Data API daily quota (1,600 units per `videos.insert` = 6 uploads/day). Videos stream straight from Drive to YouTube - no server-side storage.
@@ -29,7 +30,7 @@ After upload, files you own are trashed; files uploaded to the watched folder by
 The `app.mode` property switches between two modes:
 
 - **SELF_HOSTED** (default) - the real app. You run your own Spring Boot instance against your own Google Cloud project and OAuth credentials. Form login, real Drive polling, real YouTube uploads.
-- **DEMO** - a fully-mocked sandbox. No Google APIs are called, no credentials needed. The four service classes (`YouTubeUploadService`, `GoogleDriveService`, `YouTubeCredentialService`, `YouTubePlaylistService`) are swapped for `Mock*` implementations via Spring's `@ConditionalOnProperty`. Data lives in in-memory H2, is seeded with four sample jobs at startup, and is wiped plus re-seeded every 30 minutes. Login is bypassed via an auto-login filter, and a top-of-page banner makes the mocked nature obvious. OAuth and account-deletion controls are hidden so the demo never offers actions whose only correct outcome is a no-op.
+- **DEMO** - a fully-mocked sandbox. No Google APIs are called, no credentials needed. The four service classes (`YouTubeUploadService`, `GoogleDriveService`, `YouTubeCredentialService`, `YouTubePlaylistService`) are swapped for `Mock*` implementations via Spring's `@ConditionalOnProperty`. Data lives in in-memory H2, is seeded with four sample jobs at startup, and is wiped plus re-seeded every 30 minutes. Login is bypassed via an auto-login filter, and a top-of-page banner makes the mocked nature obvious. OAuth and account-deletion controls are hidden so the demo never offers actions whose only correct outcome is a no-op. DEMO mode refuses to boot against a persistent datasource (a `DemoModeGuard` startup check), since disposable state plus a file-based H2 silently armed seed-collision crashes.
 
 An optional `devtools` Spring profile, layered on top of `DEMO`, swaps in a `DevtoolsMockYouTubeUploadService` with pre-assignable outcomes and adds a "Schedule mock job" form to `/queue` for hand-driving the pipeline (success / permanent failure, batch of up to 50). When `devtools` is active, automatic seeding/reset is skipped so hand-scheduled jobs are not wiped.
 
@@ -72,7 +73,7 @@ docker run -p 8080:8080 \
   yt-deferred-uploader
 ```
 
-The container runs as a non-root user and includes a healthcheck against `/actuator/health`.
+The container runs as a non-root user and includes a healthcheck against `/actuator/health`. The image ships with conservative JVM memory flags (SerialGC, `-Xmx256m`, capped metaspace, reduced JIT tiers) tuned for low-concurrency, ~1 GB containers; override at runtime via `-e JAVA_OPTS=...` or `-e MALLOC_ARENA_MAX=...`.
 
 ### From source
 
@@ -101,7 +102,7 @@ This shortens the scheduler poll to 3s and the queue recency window to 30s, skip
 
 ## Features
 
-- **Drive folder polling** - point at a Drive folder; the app picks up new videos automatically
+- **Drive folder polling** - point at a Drive folder; the app picks up new videos automatically; duplicate `driveFileId` inserts (lost races against concurrent writers) are skipped via the unique constraint instead of aborting the poll
 - **Smart title generation** - extracts dates from filename patterns (Android, Samsung, Telegram, WhatsApp, iOS) or falls back to Drive's `modifiedTime`
 - **Active queue + paginated archive** - `/queue` shows active and FAILED jobs plus a recent tail of completed/cancelled (configurable window); `/queue/archive` paginates the rest (25 per page) with a compact stepper
 - **Queue dashboard** - HTMX-polled live updates, cancel/retry/delete per-job actions, timestamps rendered in the viewer's local timezone
@@ -133,7 +134,10 @@ This shortens the scheduler poll to 3s and the queue recency window to 30s, skip
 | `ADMIN_USERNAME` | No | `admin` | Login username |
 | `ADMIN_PASSWORD` | No | `admin` | Login password (set this in production) |
 | `APP_YOUTUBE_REDIRECT_URI` | No | `http://localhost:8080/settings/oauth/callback` | OAuth callback URL |
+| `APP_DB_PATH` | No | `./data/ytdeferreduploader` (set to `/app/data/...` in Docker) | File-based H2 database path; fed into the `spring.datasource.url` placeholder. Demo and test profiles override the URL entirely. |
 | `ENCRYPTION_KEY` | No | | Base64-encoded 32-byte key for AES-256-GCM token encryption |
+| `JAVA_OPTS` | No | `-Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError` | JVM flags applied by the container entrypoints; override to retune for larger hosts |
+| `MALLOC_ARENA_MAX` | No | `2` | glibc malloc arena cap; reduces native memory fragmentation on small containers |
 | `SPRING_PROFILES_ACTIVE` | No | | `prod` for production, `demo` for the mocked sandbox, `demo,devtools` for the hand-driven mock pipeline |
 
 ### Google Cloud Setup (SELF_HOSTED only)
@@ -157,13 +161,12 @@ Enables secure session cookies (`Secure`, `SameSite=Lax`, 30-minute timeout), fo
 
 ### Railway
 
-The repository includes a `Dockerfile.railway` optimized for Railway:
+The repository includes a `Dockerfile.railway` optimized for Railway and a `railway.json` that pins the Dockerfile path and a deploy-gating healthcheck against `/actuator/health` (a deploy that cannot serve health no longer replaces a healthy instance).
 
-1. Create a Railway service from your GitHub repo.
-2. Set the **Dockerfile path** to `Dockerfile.railway`.
-3. Add a **volume** mounted at `/app/storage`.
-4. Set the environment variables above.
-5. Set `APP_YOUTUBE_REDIRECT_URI` to `https://<your-app>.up.railway.app/settings/oauth/callback`.
+1. Create a Railway service from your GitHub repo. The `railway.json` selects `Dockerfile.railway` automatically.
+2. Add a **volume** mounted at `/app/storage`.
+3. Set the environment variables above.
+4. Set `APP_YOUTUBE_REDIRECT_URI` to `https://<your-app>.up.railway.app/settings/oauth/callback`.
 
 The redirect URI must match the one configured in your Google Cloud Console.
 
@@ -214,3 +217,4 @@ Trace files for failed e2e runs are written to `build/e2e-results/` and uploaded
 ## API Docs
 
 Swagger UI at http://localhost:8080/swagger-ui.html in development (disabled in the `prod` profile).
+```
