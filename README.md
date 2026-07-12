@@ -1,4 +1,3 @@
-```markdown
 # YT Deferred Uploader
 
 A Spring Boot web app that buffers YouTube uploads from Google Drive around the YouTube Data API daily quota (1,600 units per `videos.insert` = 6 uploads/day). Videos stream straight from Drive to YouTube - no server-side storage.
@@ -217,4 +216,3 @@ Trace files for failed e2e runs are written to `build/e2e-results/` and uploaded
 ## API Docs
 
 Swagger UI at http://localhost:8080/swagger-ui.html in development (disabled in the `prod` profile).
-```
