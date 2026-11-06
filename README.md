@@ -22,6 +22,8 @@ Phone or desktop -> Google Drive folder
 
 The app polls a configured Drive folder, queues new videos as `UploadJob` rows, and drains the queue against the YouTube Data API. Streaming is chunked (10 MB) and runs straight from Drive's `executeMediaAsInputStream` into YouTube's `videos.insert` - nothing is written to disk. On `429` quota exhaustion, all pending jobs are deferred to the next midnight in the configured timezone. Transient failures retry with exponential backoff (up to 3 attempts).
 
+If the process stops during an upload (restart, deploy, crash, power loss), the job is re-queued as `PENDING` on the next startup, before the scheduler starts, and the upload restarts from the beginning. The YouTube resumable session from the stopped process is not reused. Known limitation: if the process stops after YouTube has accepted the video but before the job is saved as `COMPLETED`, the re-queued job uploads the video again and you get a duplicate. The window is short, and a possible duplicate is preferred over a silently lost video.
+
 After upload, files you own are trashed; files uploaded to the watched folder by collaborators (which the API cannot trash without ownership) are removed from the watched folder via `removeParents`, mirroring the Drive web UI's "delete from this folder" behavior.
 
 ## Modes
