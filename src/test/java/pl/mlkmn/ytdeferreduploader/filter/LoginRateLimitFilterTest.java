@@ -103,27 +103,20 @@ class LoginRateLimitFilterTest {
     }
 
     @Test
-    void xForwardedFor_usesFirstIp() throws ServletException, IOException {
-        MockHttpServletRequest request = postLogin("127.0.0.1");
-        request.addHeader("X-Forwarded-For", "10.0.0.1, 10.0.0.2");
-
-        // Block using the forwarded IP
+    void spoofedXForwardedFor_isIgnored_keyedByRemoteAddr() throws ServletException, IOException {
         for (int i = 0; i < 5; i++) {
-            filter.recordFailure(request);
+            MockHttpServletRequest attempt = postLogin("203.0.113.7");
+            attempt.addHeader("X-Forwarded-For", "10.0.0." + i);
+            filter.recordFailure(attempt);
         }
 
+        MockHttpServletRequest request = postLogin("203.0.113.7");
+        request.addHeader("X-Forwarded-For", "10.0.0.99");
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilterInternal(request, response, filterChain);
 
         assertEquals(429, response.getStatus());
-
-        // A request from a different forwarded IP should pass
-        MockHttpServletRequest otherRequest = postLogin("127.0.0.1");
-        otherRequest.addHeader("X-Forwarded-For", "10.0.0.99");
-        MockHttpServletResponse otherResponse = new MockHttpServletResponse();
-        filter.doFilterInternal(otherRequest, otherResponse, filterChain);
-
-        verify(filterChain).doFilter(otherRequest, otherResponse);
+        verify(filterChain, never()).doFilter(request, response);
     }
 
     @Test

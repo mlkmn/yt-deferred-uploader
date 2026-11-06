@@ -50,11 +50,8 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         attempts.remove(ip);
     }
 
+    // Forwarded headers are resolved by the container (RemoteIpValve) only for trusted proxies.
     private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isEmpty()) {
-            return forwarded.split(",")[0].trim();
-        }
         return request.getRemoteAddr();
     }
 
