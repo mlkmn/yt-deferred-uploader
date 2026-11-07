@@ -63,9 +63,9 @@ class ReverseProxyIntegrationTest {
         HttpResponse<String> response = send(get("/queue", "198.51.100.10").build());
 
         assertEquals(302, response.statusCode());
-        String location = response.headers().firstValue("Location").orElseThrow();
-        assertTrue(location.startsWith("https://"), location);
-        assertTrue(location.endsWith("/login"), location);
+        // Host is 127.0.0.1:<port> and no X-Forwarded-Port is sent, so the port must survive.
+        assertEquals("https://127.0.0.1:" + port + "/login",
+                response.headers().firstValue("Location").orElseThrow());
     }
 
     @Test
@@ -75,9 +75,8 @@ class ReverseProxyIntegrationTest {
         HttpResponse<String> response = submitLogin(page, "198.51.100.20", adminPassword);
 
         assertEquals(302, response.statusCode());
-        String location = response.headers().firstValue("Location").orElseThrow();
-        assertTrue(location.startsWith("https://"), location);
-        assertTrue(location.endsWith("/queue"), location);
+        assertEquals("https://127.0.0.1:" + port + "/queue",
+                response.headers().firstValue("Location").orElseThrow());
         String sessionCookie = response.headers().allValues("Set-Cookie").stream()
                 .filter(cookie -> cookie.startsWith("JSESSIONID="))
                 .findFirst()
