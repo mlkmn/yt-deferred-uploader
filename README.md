@@ -216,7 +216,7 @@ The release jar runs directly under systemd on any Linux host, without Docker. T
 - **Configuration.** `SPRING_PROFILES_ACTIVE=prod` plus the [environment variables](#environment-variables) above.
 - **Health check.** `GET /actuator/health` without login returns `{"status":"UP"}`.
 - **Memory.** Use the JVM flags of the Docker images (`-Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError`, `MALLOC_ARENA_MAX=2`). With them a production instance used about 0.3 GB RSS when idle and about 0.6 GB at peak.
-- **Shutdown.** `SIGTERM` triggers a graceful shutdown, after which the JVM exits with code 143.
+- **Shutdown.** `SIGTERM` triggers a graceful shutdown, after which the JVM exits with code 0 or 143. Treat both as success.
 
 ### Setup
 
@@ -263,9 +263,17 @@ What the unit does:
 - Reads secrets from `EnvironmentFile=/etc/yt-deferred-uploader/env`. systemd reads that file as root before dropping privileges, so it can stay `0600 root:root`.
 - Binds to `127.0.0.1:8080`, enables the nightly database snapshot and sets the JVM flags above.
 - Uses `Restart=on-failure` and `SuccessExitStatus=143`, so a normal stop is not treated as a failure.
-- Hardening: `ProtectSystem=strict`, `ProtectHome=yes`, `PrivateTmp=yes`, `PrivateDevices=yes`, `NoNewPrivileges=yes`, an empty `CapabilityBoundingSet=`, `ProtectKernelTunables/Modules/Logs=yes`, `ProtectControlGroups=yes`, `ProtectClock=yes`, `ProtectHostname=yes`, `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX`, `RestrictNamespaces=yes`, `RestrictRealtime=yes`, `RestrictSUIDSGID=yes`, `LockPersonality=yes`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service` and `UMask=0077`. `MemoryDenyWriteExecute=yes` is deliberately missing, because the JIT compiler needs memory that is writable and executable.
+- Hardening: `ProtectSystem=strict`, `ProtectHome=yes`, `PrivateTmp=yes`, `PrivateDevices=yes`, `NoNewPrivileges=yes`, an empty `CapabilityBoundingSet=`, `ProtectKernelTunables/Modules/Logs=yes`, `ProtectControlGroups=yes`, `ProtectClock=yes`, `ProtectHostname=yes`, `ProtectProc=invisible`, `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX`, `RestrictNamespaces=yes`, `RestrictRealtime=yes`, `RestrictSUIDSGID=yes`, `LockPersonality=yes`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service` and `UMask=0077`. `MemoryDenyWriteExecute=yes` is deliberately missing, because the JIT compiler needs memory that is writable and executable.
 - `MemoryHigh`, `MemoryMax`, `CPUWeight` and `TasksMax` are example values. Size them for the host.
 - `ProtectHome=yes` hides `/home`, so a JDK installed under a home directory (for example with SDKMAN) is not usable by the service. Install a system-wide JRE and point `ExecStart` at it.
+
+Verified with release `v1.0.0` on Debian 13 (arm64, systemd 257, OpenJDK 21.0.13 from Debian), with the hardening exactly as in the example unit:
+
+- `systemd-analyze security` overall exposure: 1.5 "OK".
+- The app started in about 11 seconds and `/actuator/health` answered `{"status":"UP"}`. Memory peaked at about 240 MiB, and there were no restarts.
+- The journal showed no permission, seccomp or address-family errors.
+- `systemctl stop` produced a clean graceful shutdown, and systemd recorded the result as success.
+- The test ran on an empty database without Google credentials, so outbound calls to Google APIs were not part of it.
 
 ### Upgrades and rollback
 
