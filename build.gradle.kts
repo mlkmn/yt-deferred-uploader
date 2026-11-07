@@ -7,7 +7,8 @@ plugins {
 }
 
 group = "pl.mlkmn"
-version = "0.0.1-SNAPSHOT"
+// The release workflow passes the tag's version (v1.2.3 -> -PreleaseVersion=1.2.3).
+version = providers.gradleProperty("releaseVersion").getOrElse("0.0.1-SNAPSHOT")
 
 java {
     toolchain {
