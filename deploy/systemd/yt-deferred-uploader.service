@@ -41,7 +41,8 @@ ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/yt-deferred-uploader/yt-deferred-up
 
 Restart=on-failure
 RestartSec=10
-# The JVM exits with 143 (128 + SIGTERM) after a graceful shutdown.
+# After SIGTERM and a graceful shutdown the JVM exits with 0 or with 143
+# (128 + SIGTERM). Both count as success.
 SuccessExitStatus=143
 # Spring Boot waits up to 30 s for in-flight requests on shutdown.
 TimeoutStopSec=45
@@ -66,6 +67,7 @@ ProtectKernelLogs=yes
 ProtectControlGroups=yes
 ProtectClock=yes
 ProtectHostname=yes
+ProtectProc=invisible
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=yes
 RestrictRealtime=yes
