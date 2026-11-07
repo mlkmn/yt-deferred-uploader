@@ -29,6 +29,7 @@ public class AppProperties {
     private Cleanup cleanup = new Cleanup();
     private Drive drive = new Drive();
     private Queue queue = new Queue();
+    private DbSnapshot dbSnapshot = new DbSnapshot();
 
     public AppProperties() {
     }
@@ -103,5 +104,14 @@ public class AppProperties {
     @Setter
     public static class Queue {
         private long recentWindowSeconds = 300;
+    }
+
+    @Getter
+    @Setter
+    public static class DbSnapshot {
+        private boolean enabled = false;
+        private String cron = "0 0 3 * * *";
+        /** Blank means a "backup" directory next to the database file. */
+        private String dir = "";
     }
 }
