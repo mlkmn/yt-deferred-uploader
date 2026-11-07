@@ -20,7 +20,7 @@ Phone or desktop -> Google Drive folder
                     [trash / unshare from Drive]
 ```
 
-The app polls a configured Drive folder, queues new videos as `UploadJob` rows, and drains the queue against the YouTube Data API. Streaming is chunked (10 MB) and runs straight from Drive's `executeMediaAsInputStream` into YouTube's `videos.insert` - nothing is written to disk. On `429` quota exhaustion, all pending jobs are deferred to the next midnight in the configured timezone. Transient failures retry with exponential backoff (up to 3 attempts).
+The app polls a configured Drive folder, queues new videos as `UploadJob` rows, and drains the queue against the YouTube Data API. Streaming is chunked (10 MB) and runs straight from Drive's `executeMediaAsInputStream` into YouTube's `videos.insert` - nothing is written to disk. On `429` quota exhaustion, all pending jobs are deferred to the next quota reset (midnight Pacific Time by default). Transient failures retry with exponential backoff (up to 3 attempts).
 
 If the process stops during an upload (restart, deploy, crash, power loss), the job is re-queued as `PENDING` on the next startup, before the scheduler starts, and the upload restarts from the beginning. The YouTube resumable session from the stopped process is not reused. Known limitation: if the process stops after YouTube has accepted the video but before the job is saved as `COMPLETED`, the re-queued job uploads the video again and you get a duplicate. The window is short, and a possible duplicate is preferred over a silently lost video.
 
@@ -107,7 +107,7 @@ This shortens the scheduler poll to 3s and the queue recency window to 30s, skip
 - **Smart title generation** - extracts dates from filename patterns (Android, Samsung, Telegram, WhatsApp, iOS) or falls back to Drive's `modifiedTime`
 - **Active queue + paginated archive** - `/queue` shows active and FAILED jobs plus a recent tail of completed/cancelled (configurable window); `/queue/archive` paginates the rest (25 per page) with a compact stepper
 - **Queue dashboard** - HTMX-polled live updates, cancel/retry/delete per-job actions, timestamps rendered in the viewer's local timezone
-- **Quota-aware scheduling** - defers all pending jobs when YouTube returns 429, resumes at the next midnight
+- **Quota-aware scheduling** - defers all pending jobs when YouTube returns 429, resumes at the next quota reset (midnight Pacific Time)
 - **Exponential backoff** - transient errors retry up to 3 times with growing delay
 - **Playlists** - assign a default playlist; uploaded videos are added automatically
 - **Ownership-aware Drive cleanup** - own files get trashed, collaborator uploads get unshared from the watched folder
@@ -199,7 +199,7 @@ Additional properties in `application.yml` (overridable via environment variable
 | `app.drive.poll-interval-ms` | `60000` | Drive polling interval |
 | `app.scheduler.poll-interval-ms` | `30000` | Upload scheduler polling interval |
 | `app.scheduler.max-retries` | `3` | Max retries for transient failures |
-| `app.youtube.quota-reset-timezone` | `Europe/Warsaw` | Timezone for daily quota reset |
+| `app.youtube.quota-reset-timezone` | `America/Los_Angeles` | Timezone of the daily quota reset. YouTube resets the quota at midnight Pacific Time wherever the app runs, so keep the default unless Google changes that |
 | `app.cleanup.retention-hours` | `24` | Hours to keep terminal-status job metadata |
 | `app.queue.recent-window-seconds` | `300` | How long completed/cancelled jobs stay visible on `/queue` before moving to the archive view |
 

@@ -45,7 +45,6 @@ class UploadSchedulerTest {
     void setUp() {
         appProperties = new AppProperties();
         appProperties.getScheduler().setMaxRetries(3);
-        appProperties.getYoutube().setQuotaResetTimezone("Europe/Warsaw");
         appProperties.setMode(AppMode.SELF_HOSTED);
         scheduler = new UploadScheduler(jobRepository, uploadService,
                 credentialService, playlistService, driveService, quotaTracker, appProperties,
@@ -198,13 +197,15 @@ class UploadSchedulerTest {
         when(jobRepository.findByStatusOrderByCreatedAtAsc(UploadStatus.PENDING))
                 .thenReturn(List.of(pendingJob));
         when(jobRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        Instant nextReset = Instant.parse("2030-01-02T08:00:00Z");
+        when(quotaTracker.nextReset()).thenReturn(nextReset);
 
         scheduler.pollAndUpload();
 
         verify(quotaTracker).markExhausted();
         assertEquals(UploadStatus.PENDING, job.getStatus());
-        assertTrue(job.getScheduledAt().isAfter(Instant.now()));
-        assertTrue(pendingJob.getScheduledAt().isAfter(Instant.now()));
+        assertEquals(nextReset, job.getScheduledAt());
+        assertEquals(nextReset, pendingJob.getScheduledAt());
     }
 
     @Test

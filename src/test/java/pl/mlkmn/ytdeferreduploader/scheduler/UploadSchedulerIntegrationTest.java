@@ -87,13 +87,15 @@ class UploadSchedulerIntegrationTest {
         UploadJob job = createAndSaveJob();
         when(uploadService.upload(any()))
                 .thenThrow(new UploadException("Quota exceeded", null, false, true));
+        Instant nextReset = Instant.parse("2030-01-02T08:00:00Z");
+        when(quotaTracker.nextReset()).thenReturn(nextReset);
 
         scheduler.pollAndUpload();
 
         verify(quotaTracker).markExhausted();
         UploadJob result = jobRepository.findById(job.getId()).orElseThrow();
         assertEquals(UploadStatus.PENDING, result.getStatus());
-        assertTrue(result.getScheduledAt().isAfter(Instant.now()));
+        assertEquals(nextReset.toEpochMilli(), result.getScheduledAt().toEpochMilli());
     }
 
     @Test

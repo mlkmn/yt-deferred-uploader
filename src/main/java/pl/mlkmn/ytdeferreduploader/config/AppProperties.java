@@ -68,7 +68,7 @@ public class AppProperties {
         private String clientId = "";
         private String clientSecret = "";
         private String redirectUri = "http://localhost:8080/settings/oauth/callback";
-        private String quotaResetTimezone = "Europe/Warsaw";
+        private String quotaResetTimezone = "America/Los_Angeles";
     }
 
     @Getter

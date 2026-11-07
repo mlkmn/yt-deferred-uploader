@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pl.mlkmn.ytdeferreduploader.config.AppProperties;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -17,6 +19,7 @@ public class QuotaTracker {
 
     private final SettingsService settingsService;
     private final AppProperties appProperties;
+    private final Clock clock;
 
     public boolean isExhausted() {
         return settingsService.get(KEY_QUOTA_EXHAUSTED_DATE)
@@ -36,7 +39,17 @@ public class QuotaTracker {
         log.info("Quota reset manually");
     }
 
+    /** The next midnight in the quota reset zone, when YouTube grants a fresh daily quota. */
+    public Instant nextReset() {
+        ZoneId zone = quotaZone();
+        return LocalDate.now(clock.withZone(zone)).plusDays(1).atStartOfDay(zone).toInstant();
+    }
+
     private LocalDate todayInQuotaZone() {
-        return LocalDate.now(ZoneId.of(appProperties.getYoutube().getQuotaResetTimezone()));
+        return LocalDate.now(clock.withZone(quotaZone()));
+    }
+
+    private ZoneId quotaZone() {
+        return ZoneId.of(appProperties.getYoutube().getQuotaResetTimezone());
     }
 }
