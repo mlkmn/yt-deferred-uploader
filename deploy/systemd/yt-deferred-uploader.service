@@ -1,0 +1,82 @@
+# Example systemd unit for running the release jar on a Linux host.
+# See "Self-hosting with systemd" in the README for the setup steps.
+#
+# Install as /etc/systemd/system/yt-deferred-uploader.service, then:
+#   systemctl daemon-reload && systemctl enable --now yt-deferred-uploader
+
+[Unit]
+Description=YT Deferred Uploader
+Documentation=https://github.com/mlkmn/yt-deferred-uploader
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=yt-uploader
+Group=yt-uploader
+
+# The database (and the optional nightly snapshot in its backup/ subdirectory)
+# lives in /var/lib/yt-deferred-uploader, the only path the app may write besides
+# its private /tmp.
+StateDirectory=yt-deferred-uploader
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/yt-deferred-uploader
+UMask=0077
+
+# Secrets (OAuth client, admin password, ENCRYPTION_KEY, redirect URI).
+# Keep this file owned by root with mode 0600. systemd reads it before
+# dropping privileges, so the service user does not need access to it.
+EnvironmentFile=/etc/yt-deferred-uploader/env
+
+Environment=SPRING_PROFILES_ACTIVE=prod
+Environment=SERVER_ADDRESS=127.0.0.1
+Environment=SERVER_PORT=8080
+Environment=APP_DB_PATH=/var/lib/yt-deferred-uploader/ytdeferreduploader
+Environment=APP_DBSNAPSHOT_ENABLED=true
+Environment="JAVA_OPTS=-Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError"
+Environment=MALLOC_ARENA_MAX=2
+
+# $JAVA_OPTS (without braces) is split into separate arguments by systemd.
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/yt-deferred-uploader/yt-deferred-uploader.jar
+
+Restart=on-failure
+RestartSec=10
+# The JVM exits with 143 (128 + SIGTERM) after a graceful shutdown.
+SuccessExitStatus=143
+# Spring Boot waits up to 30 s for in-flight requests on shutdown.
+TimeoutStopSec=45
+
+# Resource controls: example values, tune them for the host.
+MemoryHigh=600M
+MemoryMax=800M
+CPUWeight=50
+TasksMax=256
+
+# Hardening
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# MemoryDenyWriteExecute=yes is deliberately not set: the JVM's JIT compiler
+# needs memory that is both writable and executable.
+
+[Install]
+WantedBy=multi-user.target

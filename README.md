@@ -204,6 +204,81 @@ The repository includes a `Dockerfile.railway` optimized for Railway and a `rail
 
 The redirect URI must match the one configured in your Google Cloud Console.
 
+## Self-hosting with systemd
+
+The release jar runs directly under systemd on any Linux host, without Docker. This section describes what the app needs. Host-specific provisioning (accounts, limits tuned for a given machine, proxy setup) belongs to whatever manages the host.
+
+### Requirements
+
+- **Java 21 runtime.** A headless JRE is enough, for example `openjdk-21-jre-headless` on Debian or Ubuntu. The jar is architecture-independent.
+- **Writable paths.** Only the directory of `APP_DB_PATH` (the H2 files `*.mv.db` and `*.lock.db`, occasionally `*.trace.db`, and `backup/` when [snapshots](#backups) are enabled) and `java.io.tmpdir` (Tomcat's work directory and multipart temp files). Logs go to stdout, so they end up in the journal. `app.upload-dir` is a legacy setting that nothing reads or writes.
+- **Network.** Outbound HTTPS to Google (OAuth, YouTube Data API, Drive API). Inbound only the HTTP port, bound to `127.0.0.1` behind an HTTPS [reverse proxy](#behind-a-reverse-proxy).
+- **Configuration.** `SPRING_PROFILES_ACTIVE=prod` plus the [environment variables](#environment-variables) above.
+- **Health check.** `GET /actuator/health` without login returns `{"status":"UP"}`.
+- **Memory.** Use the JVM flags of the Docker images (`-Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError`, `MALLOC_ARENA_MAX=2`). With them a production instance used about 0.3 GB RSS when idle and about 0.6 GB at peak.
+- **Shutdown.** `SIGTERM` triggers a graceful shutdown, after which the JVM exits with code 143.
+
+### Setup
+
+The example unit is [`deploy/systemd/yt-deferred-uploader.service`](deploy/systemd/yt-deferred-uploader.service), and the example environment file is [`deploy/systemd/yt-deferred-uploader.env.example`](deploy/systemd/yt-deferred-uploader.env.example).
+
+```bash
+# 1. Dedicated system user without a login shell
+sudo useradd --system --user-group --no-create-home \
+  --home-dir /var/lib/yt-deferred-uploader --shell /usr/sbin/nologin yt-uploader
+
+# 2. Jar, verified, owned by root, with a stable name for the unit
+TAG=vX.Y.Z
+sudo mkdir -p /opt/yt-deferred-uploader && cd /opt/yt-deferred-uploader
+sudo curl -fLO "https://github.com/mlkmn/yt-deferred-uploader/releases/download/$TAG/yt-deferred-uploader-$TAG.jar"
+sudo curl -fLO "https://github.com/mlkmn/yt-deferred-uploader/releases/download/$TAG/yt-deferred-uploader-$TAG.jar.sha256"
+sha256sum -c "yt-deferred-uploader-$TAG.jar.sha256"
+sudo ln -sfn "yt-deferred-uploader-$TAG.jar" yt-deferred-uploader.jar
+
+# 3. Example unit and environment file from the repository
+cd "$(mktemp -d)"
+RAW=https://raw.githubusercontent.com/mlkmn/yt-deferred-uploader/master/deploy/systemd
+curl -fLO "$RAW/yt-deferred-uploader.service"
+curl -fLO "$RAW/yt-deferred-uploader.env.example"
+
+# Secrets: fill in real values, readable by root only
+sudo install -d -m 0755 /etc/yt-deferred-uploader
+sudo install -m 0600 -o root -g root yt-deferred-uploader.env.example /etc/yt-deferred-uploader/env
+sudoedit /etc/yt-deferred-uploader/env
+
+# 4. Unit
+sudo install -m 0644 yt-deferred-uploader.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now yt-deferred-uploader
+
+# 5. Check
+systemctl status yt-deferred-uploader
+curl -s http://127.0.0.1:8080/actuator/health
+journalctl -u yt-deferred-uploader -f
+```
+
+What the unit does:
+
+- Runs as `yt-uploader` with `StateDirectory=yt-deferred-uploader`. systemd creates `/var/lib/yt-deferred-uploader` with mode `0700`, owned by the service user, and the database and its snapshots live there.
+- Reads secrets from `EnvironmentFile=/etc/yt-deferred-uploader/env`. systemd reads that file as root before dropping privileges, so it can stay `0600 root:root`.
+- Binds to `127.0.0.1:8080`, enables the nightly database snapshot and sets the JVM flags above.
+- Uses `Restart=on-failure` and `SuccessExitStatus=143`, so a normal stop is not treated as a failure.
+- Hardening: `ProtectSystem=strict`, `ProtectHome=yes`, `PrivateTmp=yes`, `PrivateDevices=yes`, `NoNewPrivileges=yes`, an empty `CapabilityBoundingSet=`, `ProtectKernelTunables/Modules/Logs=yes`, `ProtectControlGroups=yes`, `ProtectClock=yes`, `ProtectHostname=yes`, `RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX`, `RestrictNamespaces=yes`, `RestrictRealtime=yes`, `RestrictSUIDSGID=yes`, `LockPersonality=yes`, `SystemCallArchitectures=native`, `SystemCallFilter=@system-service` and `UMask=0077`. `MemoryDenyWriteExecute=yes` is deliberately missing, because the JIT compiler needs memory that is writable and executable.
+- `MemoryHigh`, `MemoryMax`, `CPUWeight` and `TasksMax` are example values. Size them for the host.
+- `ProtectHome=yes` hides `/home`, so a JDK installed under a home directory (for example with SDKMAN) is not usable by the service. Install a system-wide JRE and point `ExecStart` at it.
+
+### Upgrades and rollback
+
+- Back up the database before switching versions: copy the latest snapshot, or stop the service and copy the `*.mv.db` file.
+- To upgrade, download and verify the new jar as in step 2, repoint the `yt-deferred-uploader.jar` symlink and run `sudo systemctl restart yt-deferred-uploader`. An upload interrupted by the restart is re-queued on startup.
+- The schema is managed with `spring.jpa.hibernate.ddl-auto: update`. A newer version may add tables or columns, and an older jar is not guaranteed to work on a database a newer version has touched. To roll back after such a change, stop the service, restore the backup and start the older jar.
+
+### Behind Tailscale Serve
+
+- `tailscale serve --bg --https=<port> http://127.0.0.1:8080` publishes the app at `https://<host>.<tailnet>.ts.net:<port>`, reachable only from your tailnet. Serve sets the forwarded headers the app needs (see [Behind a reverse proxy](#behind-a-reverse-proxy)).
+- Set `APP_YOUTUBE_REDIRECT_URI=https://<host>.<tailnet>.ts.net:<port>/settings/oauth/callback` and add the same URI to the authorized redirect URIs of the OAuth client in the Google Cloud Console. The browser follows the redirect, so Google never has to reach the host.
+- Tailscale obtains a public TLS certificate for the `ts.net` name, so the name appears in public Certificate Transparency logs.
+
 ## Configuration
 
 Additional properties in `application.yml` (overridable via environment variables):
