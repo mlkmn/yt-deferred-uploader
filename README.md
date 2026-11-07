@@ -202,6 +202,26 @@ Additional properties in `application.yml` (overridable via environment variable
 | `app.youtube.quota-reset-timezone` | `America/Los_Angeles` | Timezone of the daily quota reset. YouTube resets the quota at midnight Pacific Time wherever the app runs, so keep the default unless Google changes that |
 | `app.cleanup.retention-hours` | `24` | Hours to keep terminal-status job metadata |
 | `app.queue.recent-window-seconds` | `300` | How long completed/cancelled jobs stay visible on `/queue` before moving to the archive view |
+| `app.db-snapshot.enabled` (`APP_DBSNAPSHOT_ENABLED`) | `false` | Write a nightly database snapshot for file-level backups (SELF_HOSTED with a file-based database only), see [Backups](#backups) |
+| `app.db-snapshot.cron` (`APP_DBSNAPSHOT_CRON`) | `0 0 3 * * *` | When to write the snapshot (Spring cron with seconds), in the JVM's default time zone |
+| `app.db-snapshot.dir` (`APP_DBSNAPSHOT_DIR`) | `<directory of APP_DB_PATH>/backup` | Directory of the snapshot file |
+
+## Backups
+
+The H2 database file (`*.mv.db`) is written while the app runs, so copying it with a file-level backup tool (restic, borg, `cp`) can capture an inconsistent state. Back up the snapshot instead:
+
+```bash
+APP_DBSNAPSHOT_ENABLED=true
+```
+
+- Every night (`app.db-snapshot.cron`, 03:00 by default) the app runs H2's `BACKUP TO` into `ytdeferreduploader.zip.tmp` and renames it to `ytdeferreduploader.zip` in `app.db-snapshot.dir`. The snapshot is consistent even while jobs are being written.
+- Only the latest snapshot is kept. Your backup tool keeps the history. The file's modification time is the moment the snapshot finished, so a backup job can warn when the snapshot is older than about a day.
+- Schedule the backup tool well after the snapshot time.
+- The directory is created owner-only (`0700`) and the snapshot is `0600` on POSIX file systems. The snapshot contains the OAuth tokens: encrypted with `ENCRYPTION_KEY` when it is set, otherwise as plain text.
+- A failed snapshot logs one `ERROR` line and leaves the previous snapshot in place. A successful one logs one `INFO` line with its size and duration.
+- With snapshots enabled the app refuses to start on an in-memory database. In DEMO mode no snapshot is written.
+
+Restore: stop the app, unzip the snapshot into the `APP_DB_PATH` directory (it contains `ytdeferreduploader.mv.db`), make the file owned by the user running the app, and start it again with the same `ENCRYPTION_KEY`.
 
 ## Tech Stack
 

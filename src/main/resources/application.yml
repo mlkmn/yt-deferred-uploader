@@ -20,6 +20,9 @@ app:
     cron: "0 0 * * * *"
   drive:
     poll-interval-ms: 60000
+  db-snapshot:
+    enabled: false
+    cron: "0 0 3 * * *"
 
 logging:
   level:
