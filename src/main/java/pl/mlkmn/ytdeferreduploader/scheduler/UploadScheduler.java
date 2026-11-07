@@ -20,8 +20,6 @@ import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 
 @Slf4j
 @Component
@@ -135,9 +133,9 @@ public class UploadScheduler {
         if (e.isQuotaExhausted()) {
             quotaTracker.markExhausted();
             job.setStatus(UploadStatus.PENDING);
-            job.setScheduledAt(nextQuotaReset());
+            job.setScheduledAt(quotaTracker.nextReset());
             log.info("Quota exhausted by YouTube, deferring job: jobId={}, nextReset={}",
-                    job.getId(), nextQuotaReset());
+                    job.getId(), quotaTracker.nextReset());
             deferPendingJobs();
         } else if (e.isPermanent()) {
             job.setStatus(UploadStatus.FAILED);
@@ -177,7 +175,7 @@ public class UploadScheduler {
             return;
         }
 
-        Instant nextReset = nextQuotaReset();
+        Instant nextReset = quotaTracker.nextReset();
         for (UploadJob job : pendingJobs) {
             job.setScheduledAt(nextReset);
             jobRepository.save(job);
@@ -188,11 +186,5 @@ public class UploadScheduler {
     private Duration backoffDelay(int retryCount) {
         long minutes = (long) retryCount * retryCount;
         return Duration.ofMinutes(Math.max(1, minutes));
-    }
-
-    private Instant nextQuotaReset() {
-        ZoneId zone = ZoneId.of(appProperties.getYoutube().getQuotaResetTimezone());
-        LocalDate tomorrow = LocalDate.now(zone).plusDays(1);
-        return tomorrow.atStartOfDay(zone).toInstant();
     }
 }

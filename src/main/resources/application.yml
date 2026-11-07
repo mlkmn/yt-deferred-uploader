@@ -6,7 +6,7 @@ app:
     client-id: ${YOUTUBE_CLIENT_ID:}
     client-secret: ${YOUTUBE_CLIENT_SECRET:}
     redirect-uri: ${APP_YOUTUBE_REDIRECT_URI:http://localhost:8080/settings/oauth/callback}
-    quota-reset-timezone: Europe/Warsaw
+    quota-reset-timezone: America/Los_Angeles
   scheduler:
     poll-interval-ms: 30000
     max-retries: 3
