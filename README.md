@@ -85,6 +85,20 @@ export YOUTUBE_CLIENT_SECRET=your-client-secret
 ./gradlew bootRun
 ```
 
+### From a release jar
+
+Each [GitHub Release](https://github.com/mlkmn/yt-deferred-uploader/releases) attaches the boot jar `yt-deferred-uploader-vX.Y.Z.jar` and its checksum `yt-deferred-uploader-vX.Y.Z.jar.sha256`. The jar is architecture-independent and needs only a Java 21 runtime (a headless JRE is enough), no JDK or Gradle.
+
+```bash
+TAG=vX.Y.Z
+BASE=https://github.com/mlkmn/yt-deferred-uploader/releases/download/$TAG
+curl -fLO "$BASE/yt-deferred-uploader-$TAG.jar"
+curl -fLO "$BASE/yt-deferred-uploader-$TAG.jar.sha256"
+sha256sum -c "yt-deferred-uploader-$TAG.jar.sha256"
+
+SPRING_PROFILES_ACTIVE=prod java -jar "yt-deferred-uploader-$TAG.jar"
+```
+
 ## Run the demo locally
 
 ```bash
@@ -253,6 +267,16 @@ Playwright end-to-end smoke tests run in a separate `e2eTest` source set against
 ```
 
 Trace files for failed e2e runs are written to `build/e2e-results/` and uploaded as artifacts in CI.
+
+## Releases
+
+Pushing a tag `vX.Y.Z` (or `vX.Y.Z-suffix`, published as a pre-release) runs `.github/workflows/release.yml`:
+
+```bash
+git tag vX.Y.Z && git push origin vX.Y.Z
+```
+
+The workflow runs the tests on the tagged commit, builds the boot jar with version `X.Y.Z` (shown as `Implementation-Version` in the manifest and in the startup log), and creates a GitHub Release with auto-generated notes and two files: `yt-deferred-uploader-vX.Y.Z.jar` and `yt-deferred-uploader-vX.Y.Z.jar.sha256` (`sha256sum` format). A failing test stops the workflow before the release is created. Verify a download with `sha256sum -c yt-deferred-uploader-vX.Y.Z.jar.sha256`. The checksum guards against corrupted downloads, not against someone with write access to the repository.
 
 ## API Docs
 
