@@ -3,6 +3,7 @@ package pl.mlkmn.ytdeferreduploader.repository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import pl.mlkmn.ytdeferreduploader.model.PrivacyStatus;
@@ -19,6 +20,9 @@ class UploadJobRepositoryTest {
 
     @Autowired
     private UploadJobRepository repository;
+
+    @Autowired
+    private TestEntityManager entityManager;
 
     private static final List<UploadStatus> ALWAYS_VISIBLE =
             List.of(UploadStatus.PENDING, UploadStatus.UPLOADING, UploadStatus.FAILED);
@@ -68,6 +72,8 @@ class UploadJobRepositoryTest {
     void findActiveAndRecent_orderedByCreatedAtDesc() {
         UploadJob first = save("first", UploadStatus.PENDING);
         UploadJob second = save("second", UploadStatus.PENDING);
+        // Two saves can share one clock tick, so make the creation order explicit.
+        setCreatedAt(first, second.getCreatedAt().minusSeconds(60));
 
         List<UploadJob> result = repository.findActiveAndRecent(
                 ALWAYS_VISIBLE, RECENT_TAIL, Instant.now().plusSeconds(3600));
@@ -130,5 +136,15 @@ class UploadJobRepositoryTest {
         job.setFileSizeBytes(1024L);
         job.setStatus(status);
         return repository.save(job);
+    }
+
+    private void setCreatedAt(UploadJob job, Instant createdAt) {
+        entityManager.flush();
+        entityManager.getEntityManager()
+                .createQuery("UPDATE UploadJob j SET j.createdAt = :createdAt WHERE j.id = :id")
+                .setParameter("createdAt", createdAt)
+                .setParameter("id", job.getId())
+                .executeUpdate();
+        entityManager.clear();
     }
 }
